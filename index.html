@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frontline Ops 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<!-- persistent profile bar on menu screens -->
+<header id="topbar">
+  <div class="brand" data-go="menu">FRONTLINE <span>OPS 3D</span></div>
+  <div class="profile">
+    <input id="pname" maxlength="16" spellcheck="false" title="Click to rename">
+    <div class="lvl"><b id="plevel">1</b><small>LEVEL</small></div>
+    <div class="xpbox"><div class="xpbar"><i id="pxpfill"></i></div><small id="pxptext">0 / 500 XP</small></div>
+    <div class="cur" title="Unallocated XP you can invest into unlocking weapons (does not lower your level)"><span class="ico xp">XP</span><b id="pbank">0</b></div>
+    <div class="cur" title="Coins"><span class="ico coin">¢</span><b id="pcoins">0</b></div>
+    <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
+  </div>
+</header>
+
+<main id="screens">
+  <!-- MAIN MENU -->
+  <section class="screen" id="screen-menu">
+    <div class="menu-wrap">
+      <h1 class="title">FRONTLINE<br><span>OPS 3D</span></h1>
+      <p class="tag">First-person tactical shooter</p>
+      <nav class="main-nav">
+        <button data-go="play" class="big">▶ PLAY</button>
+        <button data-go="achievements">ACHIEVEMENTS</button>
+        <button data-go="weapons">WEAPONS</button>
+        <button data-go="locker">LOCKER</button>
+        <button data-go="shop">SHOP</button>
+      </nav>
+      <p class="controls-hint">Click to capture the mouse · WASD move · Shift sprint · Space jump · C crouch (hold: prone) · Mouse look · LMB fire · RMB aim/scope · R reload · 1-4 weapons · F melee · 5-7 utilities (or Q select, G use) · L weapon light · N night gear · Tab scores · Esc menu</p>
+    </div>
+    <button id="credits-btn" title="Image and sound credits">Credits</button>
+  </section>
+
+  <!-- PLAY: SP / MP -->
+  <section class="screen" id="screen-play">
+    <div class="panel narrow">
+      <h2>Play</h2>
+      <div class="choice-grid two">
+        <button class="choice" data-go="sp"><b>Single Player</b><span>Fight alongside and against AI soldiers equipped like you.</span></button>
+        <button class="choice" data-go="mp"><b>Online Multiplayer</b><span>Host a game with a code or join a friend's game.</span></button>
+      </div>
+      <button class="back" data-go="menu">← Back</button>
+    </div>
+  </section>
+
+  <!-- SINGLE PLAYER WIZARD -->
+  <section class="screen" id="screen-sp">
+    <div class="panel wide">
+      <div class="steps" id="sp-steps"></div>
+      <div id="sp-body"></div>
+      <div class="wizard-nav"><button class="back" id="sp-back">← Back</button><button class="primary" id="sp-next">Next →</button></div>
+    </div>
+  </section>
+
+  <!-- MULTIPLAYER: HOST / JOIN -->
+  <section class="screen" id="screen-mp">
+    <div class="panel narrow">
+      <h2>Online Multiplayer</h2>
+      <div class="choice-grid two">
+        <button class="choice" id="mp-host"><b>Host Game</b><span>Create a lobby and share the generated game code.</span></button>
+        <div class="choice join-box"><b>Join Game</b>
+          <input id="join-code" maxlength="6" placeholder="GAME CODE" spellcheck="false" autocomplete="off">
+          <button class="primary" id="mp-join">Join</button>
+        </div>
+      </div>
+      <p id="mp-status" class="status"></p>
+      <button class="back" data-go="play">← Back</button>
+    </div>
+  </section>
+
+  <!-- LOBBY -->
+  <section class="screen" id="screen-lobby">
+    <div class="panel wide" id="lobby"></div>
+  </section>
+
+  <!-- WEAPONS -->
+  <section class="screen" id="screen-weapons">
+    <div class="panel wide armory">
+      <div class="armory-head"><h2>Weapons</h2><div class="tabs" id="w-tabs"></div><button class="back" data-go="menu">← Back</button></div>
+      <div class="armory-body">
+        <div class="item-grid" id="w-grid"></div>
+        <div class="detail" id="w-detail"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHOP -->
+  <section class="screen" id="screen-shop">
+    <div class="panel wide armory">
+      <div class="armory-head"><h2>Shop</h2><div class="tabs" id="s-tabs"></div><button class="back" data-go="menu">← Back</button></div>
+      <div class="shop-grid" id="s-grid"></div>
+    </div>
+  </section>
+
+  <!-- LOCKER -->
+  <section class="screen" id="screen-locker">
+    <div class="panel wide armory">
+      <div class="armory-head"><h2>Locker</h2><p class="sub">Customize how your weapons, body armour and uniform look.</p><button class="back" data-go="menu">← Back</button></div>
+      <div class="locker-body">
+        <div class="locker-list" id="l-list"></div>
+        <div class="locker-preview"><canvas id="l-side" width="640" height="280"></canvas><div class="l-row"><canvas id="l-3d" width="300" height="300"></canvas><div id="l-face" class="hidden"><canvas id="face-ed" width="320" height="320"></canvas></div></div><div id="l-name"></div></div>
+        <div class="locker-camos" id="l-camos"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACHIEVEMENTS -->
+  <section class="screen" id="screen-achievements">
+    <div class="panel wide">
+      <div class="armory-head"><h2>Achievements</h2><p class="sub" id="ach-count"></p><button class="back" data-go="menu">← Back</button></div>
+      <div class="ach-grid" id="ach-grid"></div>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section class="screen" id="screen-game">
+    <canvas id="game3d"></canvas>
+    <canvas id="game"></canvas>
+    <div id="lock-hint" class="hidden">Click to aim</div>
+    <div class="overlay hidden" id="pause">
+      <div class="panel narrow center">
+        <h2>Paused</h2>
+        <button class="primary" id="btn-resume">Resume</button>
+        <button id="btn-pause-settings">Settings</button>
+        <button id="btn-quit">Quit Match</button>
+      </div>
+    </div>
+    <div class="overlay hidden" id="endscreen"><div class="panel wide" id="end-body"></div></div>
+  </section>
+</main>
+
+<div class="overlay hidden" id="settings">
+  <div class="panel narrow center">
+    <h2>Settings</h2>
+    <label class="row">Volume <input type="range" id="vol" min="0" max="1" step="0.05"></label>
+    <label class="row">Mouse sensitivity <input type="range" id="sens" min="0.2" max="3" step="0.05" value="1"></label>
+    <label class="row">Graphics <select id="quality"><option value="high">High (shadows)</option><option value="medium">Medium</option><option value="low">Low (fastest)</option></select></label>
+    <button id="btn-reset" class="danger">Reset all progress</button>
+    <button class="primary" id="btn-close-settings">Close</button>
+  </div>
+</div>
+<div class="overlay hidden" id="credits-modal">
+  <div class="panel wide credits-panel">
+    <div class="armory-head"><h2>Credits</h2><div class="tabs" id="credits-tabs"><button class="sel" data-ctab="img">Images</button><button data-ctab="snd">Sounds</button></div><button class="back" id="credits-close">✕ Close</button></div>
+    <div id="credits-list"></div>
+  </div>
+</div>
+<div class="overlay hidden" id="ammo-modal"><div class="panel narrow ammo-panel" id="ammo-body"></div></div>
+<div id="toasts"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script src="js/credits.js"></script>
+<script src="js/data.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/maps.js"></script>
+<script src="js/mapgen.js"></script>
+<script src="vendor/three.min.js"></script>
+<script src="js/render.js"></script>
+<script src="js/sounds.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/gunmodel.js"></script>
+<script src="js/soldier3d.js"></script>
+<script src="js/view3d.js"></script>
+<script src="js/game.js"></script>
+<script src="js/net.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

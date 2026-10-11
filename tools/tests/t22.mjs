@@ -1,0 +1,1 @@
+export default async (b) => { await b.goto('file:///C:/Users/ajons/AppData/Local/Temp/claude/C--Users-ajons/86065028-648c-4f69-a382-139c4ddc0563/scratchpad/img2/sheet3.html'); await b.sleep(2500); await b.shot('99-sheet3'); };

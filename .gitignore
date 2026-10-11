@@ -1,0 +1,4 @@
+# headless Chrome profiles used by the test scripts (browser data, cookies and Chrome's own API keys)
+tools/tests/.chrome-profile/
+tools/tests/.prof-*/
+tools/tests/shots/
