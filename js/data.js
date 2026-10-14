@@ -111,11 +111,11 @@ def([
 // vision: 'nv' image intensifier, 'ir' thermal, 'fused' both. range = how far you can see in the dark (px)
 def([
   { id:'nogear', name:'No Night Gear', cat:'gear', type:'None', weight:0, level:1, xp:0, coins:0, noImage:true, desc:'Naked eyes and a weapon light. At night you only see what is lit.' },
-  { id:'pvs7', name:'AN/PVS-7 NVG', cat:'gear', type:'Night Vision (Gen 2+)', vision:'nv', range:560, weight:0.68, level:6, xp:1800, coins:2400, desc:'Single-tube binocular night vision goggles. Amplifies moon and star light into a green image.' },
-  { id:'pvs14', name:'AN/PVS-14 Monocular', cat:'gear', type:'Night Vision (Gen 3)', vision:'nv', range:720, weight:0.35, level:12, xp:4500, coins:5500, desc:'Gen 3 night vision monocular. Brighter, sharper and lighter than the PVS-7.' },
-  { id:'gpnvg18', name:'GPNVG-18 Panoramic NVG', cat:'gear', type:'Night Vision (Gen 3, panoramic)', vision:'nv', range:950, wide:true, weight:0.88, level:24, xp:11000, coins:15000, desc:'Four-tube panoramic goggles with a 97° field of view. No tunnel vision.' },
+  { id:'pvs7', name:'AN/PVS-7 NVG', cat:'gear', type:'Night Vision (Gen 2+)', vision:'nv', tube:'single', fov:0.9, grain:0.2, phosphor:'green', range:560, weight:0.68, level:6, xp:1800, coins:2400, desc:'Single-tube binocular night vision goggles. Amplifies moon and star light into a green image.' },
+  { id:'pvs14', name:'AN/PVS-14 Monocular', cat:'gear', type:'Night Vision (Gen 3)', vision:'nv', tube:'mono', fov:0.92, grain:0.13, phosphor:'green', range:720, weight:0.35, level:12, xp:4500, coins:5500, desc:'Gen 3 night vision monocular. Brighter, sharper and lighter than the PVS-7.' },
+  { id:'gpnvg18', name:'GPNVG-18 Panoramic NVG', cat:'gear', type:'Night Vision (Gen 3, panoramic)', vision:'nv', tube:'quad', fov:1.15, grain:0.09, phosphor:'white', range:950, wide:true, weight:0.88, level:24, xp:11000, coins:15000, desc:'Four-tube panoramic goggles with a 97° field of view. No tunnel vision.' },
   { id:'pas13', name:'AN/PAS-13 Thermal Sight', cat:'gear', type:'Infrared (thermal)', vision:'ir', range:800, weight:1.6, level:16, xp:6500, coins:8500, desc:'Thermal imager. Body heat glows white through darkness, smoke and foliage. Works in daylight too.' },
-  { id:'psq20', name:'AN/PSQ-20 ENVG', cat:'gear', type:'Fused Night Vision + Thermal', vision:'fused', range:900, weight:1.0, level:34, xp:19000, coins:26000, desc:'Enhanced night vision goggle that overlays thermal outlines on a night vision image.' },
+  { id:'psq20', name:'AN/PSQ-20 ENVG', cat:'gear', type:'Fused Night Vision + Thermal', vision:'fused', tube:'mono', fov:0.95, grain:0.1, phosphor:'green', range:900, weight:1.0, level:34, xp:19000, coins:26000, desc:'Enhanced night vision goggle that overlays thermal outlines on a night vision image.' },
 ]);
 
 // ---------------------------------------------------------------- WWII & extra weapons, utilities, armour
@@ -140,6 +140,17 @@ def([
   { id:'thermite', name:'AN-M14 Thermite Grenade', cat:'utility', type:'Incendiary', dmg:14, blast:70, fuse:2.0, weight:0.9, level:10, xp:3200, coins:1200, kind:'thermite', desc:'Burns at 2,200 °C for 40 seconds worth of fun: a long, hot fire on the spot where it lands.' },
   { id:'gas', name:'CS Gas Grenade', cat:'utility', type:'Tactical', fuse:1.5, weight:0.5, level:7, xp:2200, coins:700, kind:'gas', desc:'Tear gas cloud. Hurts slowly, blurs vision and slows anyone without a mask.' },
   { id:'satchel', name:'Satchel Charge', cat:'utility', type:'Explosive', dmg:240, blast:170, fuse:5.0, weight:2.5, level:20, xp:9000, coins:3500, kind:'satchel', throwSpeed:380, desc:'Heavy demolition charge on a 5 second fuse. Flattens buildings.' },
+  { id:'hk417', name:'HK417', cat:'primary', cal:'762x51', type:'Battle Rifle', dmg:40, rpm:600, mag:20, reload:2.6, range:1250, spread:2.2, speed:2100, weight:4.4, pen:2.4, auto:true, level:19, xp:6500, coins:8500, desc:'The 7.62mm big brother of the HK416: a piston-driven battle rifle with a long free-floated rail.' },
+  { id:'galil', name:'IWI Galil ACE 23', cat:'primary', cal:'556', type:'Assault Rifle', dmg:27, rpm:700, mag:35, reload:2.4, range:950, spread:2.7, speed:1900, weight:3.4, pen:1.5, auto:true, level:9, xp:2600, coins:3400, desc:'Israeli AK-pattern rifle in 5.56mm. Rugged Kalashnikov action, modern rails and a folding stock.' },
+  { id:'svt40', name:'Tokarev SVT-40', cat:'primary', norail:true, cal:'762x54', type:'Marksman Rifle', dmg:62, rpm:240, mag:10, reload:3.0, range:1300, spread:1.4, speed:2200, weight:3.9, pen:2.6, auto:false, level:11, xp:3600, coins:4600, desc:'Soviet WW2 semi-automatic rifle with a detachable 10-round box and a muzzle brake.' },
+  { id:'l96', name:'Accuracy Intl. L96A1', cat:'primary', cal:'762x51', type:'Sniper Rifle', dmg:95, rpm:45, mag:10, reload:3.2, range:1750, spread:0.35, speed:2600, weight:6.2, pen:2.9, auto:false, scope:true, level:20, xp:8000, coins:10500, desc:'British Army green-stocked bolt-action sniper rifle. The ancestor of the AWM.' },
+  { id:'ksg', name:'Kel-Tec KSG', cat:'primary', cal:'12ga', type:'Shotgun', dmg:13, pellets:8, rpm:85, mag:14, reload:4.4, range:440, spread:12, speed:1450, weight:3.6, pen:0.5, auto:false, level:12, xp:4000, coins:5200, desc:'Compact bullpup pump-action with twin magazine tubes: 14 shells in a short package.' },
+  { id:'ump45', name:'HK UMP45', cat:'sidearm', cal:'45acp', type:'Submachine Gun', dmg:23, rpm:600, mag:25, reload:2.2, range:560, spread:3.6, speed:1300, weight:2.3, pen:0.6, auto:true, level:8, xp:2200, coins:3000, desc:'Boxy polymer .45 ACP SMG. Slow-firing but each round hits hard.' },
+  { id:'cz75', name:'CZ 75', cat:'sidearm', cal:'9mm', type:'Pistol', dmg:23, rpm:420, mag:16, reload:1.6, range:650, spread:2.2, speed:1500, weight:1.0, pen:0.5, auto:false, level:4, xp:900, coins:1300, desc:'Czech all-steel 9mm famous for its accuracy and the slide riding inside the frame.' },
+  { id:'fiveseven', name:'FN Five-seveN', cat:'sidearm', cal:'57x28', type:'Pistol', dmg:21, rpm:450, mag:20, reload:1.7, range:700, spread:2.3, speed:2200, weight:0.74, pen:1.2, auto:false, level:10, xp:3000, coins:4000, desc:'Light polymer pistol firing the fast 5.7mm round: 20 shots and good armour penetration.' },
+  { id:'rgo', name:'RGO Impact Grenade', cat:'utility', type:'Grenade', dmg:95, blast:90, fuse:3.8, weight:0.53, level:9, xp:2600, coins:900, kind:'frag', impact:true, desc:'Russian dual-fuze grenade: explodes the moment it hits something (or after 3.8 s).' },
+  { id:'flare', name:'Hand Flare', cat:'utility', type:'Tactical', fuse:1.2, weight:0.3, level:3, xp:500, coins:300, kind:'flare', throwSpeed:560, desc:'Throw it to light up an area for 35 seconds at night. Blinding through night vision.' },
+  { id:'ghillie', name:'Ghillie Suit', cat:'armor', type:'Camouflage', reduce:0, blast:0, ghillie:true, weight:3.0, level:13, xp:4200, coins:5500, desc:'No protection at all, but hides you: much better concealment in plants, and you blend in out in the open while down and still.' },
   { id:'mine', name:'M16 "Bouncing Betty" Mine', cat:'utility', type:'Mine', dmg:140, blast:110, weight:3.5, level:12, xp:4200, coins:1800, kind:'mine', desc:'Buried anti-personnel mine. Triggers on any enemy that steps close, in every direction.' },
 ]);
 
@@ -348,6 +359,12 @@ const MAPS = [
   { id:'suburbs', name:'Maple Street', size:'Large', desc:'A quiet suburb: houses with fenced back yards, curving streets and a three-storey school with a sports field.' },
   { id:'harbor', name:'Port Haven', size:'Extra Large', desc:'A harbour town on the sea: piers, quayside warehouses, a lighthouse and an old town of stucco and brick behind.' },
   { id:'canyon', name:'Red Canyon', size:'Extra Large', desc:'A winding desert valley between high mesas, with a rail line, a mining camp and ramps up to ranches on the cliffs.' },
+  { id:'monastery', name:"St. Aldric's Monastery", size:'Large', desc:'A fortified monastery on a mountain top: a cloister, a four-storey bell tower and a chapel, terraced gardens and a road winding up through pine forest.' },
+  { id:'dam', name:'Hollow Creek Dam', size:'Large', desc:'A concrete dam holds back a reservoir. Fight across the crest road, the power station at its foot, the transformer yard and the town of dam workers in the valley.' },
+  { id:'station', name:'Kessel Junction', size:'Medium', desc:'A railway station: four tracks and platforms, parked freight trains to slip between, freight sheds, a three-storey signal box and the town beyond.' },
+  { id:'refinery', name:'Al-Rashid Refinery', size:'Large', desc:'A desert oil refinery: a fenced tank farm, a four-storey cracking unit, warehouses, pipe racks and a workers’ camp in the dunes.' },
+  { id:'resort', name:'Whitepeak Ski Resort', size:'Large', desc:'A three-storey timber lodge with a car park, chalets scattered over snowy slopes, a ski lift and pine forest under the peaks.' },
+  { id:'coral', name:'Coral Bay', size:'Large', desc:'A tropical island: beach huts and a pier on the sea, a lagoon, thick jungle and an old colonial fort on the hill.' },
   { id:'oldtown_xl', name:'Greater Old Town', size:'Massive', massive:true, desc:'A whole city: avenues and side streets, apartment blocks, plazas, parks and a river. For massive battles.' },
   { id:'farm_xl', name:'Harvest Valley', size:'Massive', massive:true, desc:'A wide river valley of farmsteads, wheat fields, hedgerows and woods. For massive battles.' },
   { id:'desert_xl', name:'Dust Province', size:'Massive', massive:true, desc:'A sprawling desert town of mud-brick compounds around a market, with an oasis and rocky flats. For massive battles.' },
@@ -362,6 +379,24 @@ const GAMEMODES = [
   { id:'snd', name:'Search & Destroy', teamsOnly:true, desc:'Teams only. Each team has a hidden base (1000 HP) on its side of the map. Find the enemy base and destroy it first. Unlimited respawns.' },
 ];
 const BASE_HP = 1000;
+// optional match modifiers: any number can be combined with any mode
+const MODIFIERS = [
+  { id:'dhp', name:'Double Health', icon:'❤️', desc:'Everyone has 200 health.' },
+  { id:'ddmg', name:'Double Damage', icon:'💥', desc:'All weapons do twice the damage.' },
+  { id:'headonly', name:'Headshots Only', icon:'🎯', desc:'Bullets only hurt when they hit the head. Explosives, fire and melee still work.' },
+  { id:'oneshot', name:'One-Shot Kills', icon:'☠️', desc:'Any hit from an enemy kills.' },
+  { id:'infammo', name:'Infinite Ammo', icon:'♾️', desc:'Magazines never run dry.' },
+  { id:'lowgrav', name:'Low Gravity', icon:'🌙', desc:'Jump much higher and fall slowly; bullets and grenades drop less.' },
+  { id:'speed', name:'Speed Boost', icon:'⚡', desc:'Everyone moves 50% faster.' },
+  { id:'vampire', name:'Vampire', icon:'🧛', desc:'Every kill restores 50 health.' },
+  { id:'explosive', name:'Explosive Rounds', icon:'🧨', desc:'Every bullet bursts with a small explosion on impact.' },
+  { id:'fastspawn', name:'Fast Respawn', icon:'⏱️', desc:'Respawn after 1.5 seconds instead of 4 (modes with respawns).' },
+  { id:'slowbullets', name:'Slow Bullets', icon:'🐌', desc:'Bullets fly at about an eighth of their real speed (same arcs): you can see them coming, lead your shots and dodge.' },
+  { id:'regen', name:'Regeneration', icon:'💚', desc:'Health slowly comes back after 4 seconds without taking damage.' },
+  { id:'bigheads', name:'Big Heads', icon:'🎈', desc:'Everyone has a huge head: bigger, easier headshots.' },
+  { id:'ricochet', name:'Ricochet Rounds', icon:'↩️', desc:'Bullets that can\'t get through a wall or hit the ground at a shallow angle bounce off (up to twice).' },
+  { id:'sidearms', name:'Sidearms Only', icon:'🔫', desc:'No primary weapons: pistols, revolvers and SMGs only.' },
+];
 
 // ---------------------------------------------------------------- achievements
 // stat keys are tracked in profile.stats; check(p) returns progress value

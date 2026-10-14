@@ -16,6 +16,7 @@
   <div class="brand" data-go="menu">FRONTLINE <span>OPS 3D</span></div>
   <div class="profile">
     <input id="pname" maxlength="16" spellcheck="false" title="Click to rename">
+    <button class="icon-btn" id="btn-profile" data-go="profile" title="Profile & career stats">👤</button>
     <div class="lvl"><b id="plevel">1</b><small>LEVEL</small></div>
     <div class="xpbox"><div class="xpbar"><i id="pxpfill"></i></div><small id="pxptext">0 / 500 XP</small></div>
     <div class="cur" title="Unallocated XP you can invest into unlocking weapons (does not lower your level)"><span class="ico xp">XP</span><b id="pbank">0</b></div>
@@ -115,6 +116,14 @@
     </div>
   </section>
 
+  <!-- PROFILE -->
+  <section class="screen" id="screen-profile">
+    <div class="panel wide">
+      <div class="armory-head"><h2>Profile</h2><p class="sub">Your career statistics.</p><button class="back" data-go="menu">← Back</button></div>
+      <div id="profile-body" class="profile-body"></div>
+    </div>
+  </section>
+
   <!-- ACHIEVEMENTS -->
   <section class="screen" id="screen-achievements">
     <div class="panel wide">
@@ -146,6 +155,9 @@
     <label class="row">Volume <input type="range" id="vol" min="0" max="1" step="0.05"></label>
     <label class="row">Mouse sensitivity <input type="range" id="sens" min="0.2" max="3" step="0.05" value="1"></label>
     <label class="row">Graphics <select id="quality"><option value="high">High (shadows)</option><option value="medium">Medium</option><option value="low">Low (fastest)</option></select></label>
+    <h3 style="margin:14px 0 6px">Controls <small class="sub" style="text-transform:none;letter-spacing:0">click a key, then press the new one (Esc cancels)</small></h3>
+    <div id="keybinds" class="keybinds"></div>
+    <div class="row"><button id="btn-keys-reset">Reset controls to default</button><span class="sub" style="font-size:12px">Mouse: left = fire, right = aim. Arrow keys also move.</span></div>
     <button id="btn-reset" class="danger">Reset all progress</button>
     <button class="primary" id="btn-close-settings">Close</button>
   </div>
@@ -160,21 +172,23 @@
 <div id="toasts"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-<script src="js/credits.js"></script>
-<script src="js/data.js"></script>
-<script src="js/profile.js"></script>
-<script src="js/maps.js"></script>
-<script src="js/mapgen.js"></script>
+<script src="js/credits.js?v=20261013k"></script>
+<script src="js/data.js?v=20261013k"></script>
+<script src="js/profile.js?v=20261013k"></script>
+<script src="js/maps.js?v=20261013k"></script>
+<script src="js/mapgen.js?v=20261013k"></script>
+<script src="js/mapdesc.js?v=20261013k"></script>
 <script src="vendor/three.min.js"></script>
-<script src="js/render.js"></script>
-<script src="js/sounds.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/ai.js"></script>
-<script src="js/gunmodel.js"></script>
-<script src="js/soldier3d.js"></script>
-<script src="js/view3d.js"></script>
-<script src="js/game.js"></script>
-<script src="js/net.js"></script>
-<script src="js/ui.js"></script>
+<script src="js/render.js?v=20261013k"></script>
+<script src="js/sounds.js?v=20261013k"></script>
+<script src="js/audio.js?v=20261013k"></script>
+<script src="js/ai.js?v=20261013k"></script>
+<script src="js/gunreal.js?v=20261013k"></script>
+<script src="js/gunmodel.js?v=20261013k"></script>
+<script src="js/soldier3d.js?v=20261013k"></script>
+<script src="js/view3d.js?v=20261013k"></script>
+<script src="js/game.js?v=20261013k"></script>
+<script src="js/net.js?v=20261013k"></script>
+<script src="js/ui.js?v=20261013k"></script>
 </body>
 </html>

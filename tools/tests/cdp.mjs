@@ -21,8 +21,13 @@ const send = (method, params = {}) => new Promise(r => { const i = ++id; pending
 await send('Runtime.enable'); await send('Page.enable'); await send('Log.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 const api = {
-  sleep, logs,
-  async goto(url) { await send('Page.navigate', { url }); await sleep(1500); },
+  sleep, logs, send,
+  async goto(url) {
+    await send('Page.navigate', { url }); await sleep(800);
+    // wait until the game scripts have loaded (slow machines can take several seconds)
+    for (let t = 0; t < 60; t++) { const r = await send('Runtime.evaluate', { expression: "typeof Game !== 'undefined' && typeof UI !== 'undefined' && typeof THREE !== 'undefined' && document.readyState === 'complete'", returnByValue: true }); if (r.result.result && r.result.result.value === true) break; await sleep(250); }
+    await sleep(700);
+  },
   async eval(expr) { const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.result.exceptionDetails) return 'ERR: ' + (r.result.exceptionDetails.exception?.description || r.result.exceptionDetails.text); return r.result.result.value; },
   async shot(name) { const r = await send('Page.captureScreenshot', { format: 'png' }); fs.mkdirSync('tools/tests/shots', { recursive: true }); fs.writeFileSync(`tools/tests/shots/${name}.png`, Buffer.from(r.result.data, 'base64')); },
   async key(key, type) { const code = key.length === 1 ? 'Key' + key.toUpperCase() : key; await send('Input.dispatchKeyEvent', { type: type || 'keyDown', key, code, text: type === 'keyUp' ? undefined : (key.length === 1 ? key : undefined) }); },

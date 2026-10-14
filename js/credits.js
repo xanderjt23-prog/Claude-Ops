@@ -803,5 +803,82 @@ window.IMAGE_CREDITS = {
   "author": "Herr chris",
   "license": "CC BY 3.0",
   "source": "https://commons.wikimedia.org/wiki/File:Tigr_pso_1_med.jpg"
+ },
+ "galil": {
+  "file": "img/items/galil.jpg",
+  "title": "IWI_Galil_ACE_22NC_Ejército_de_Chile.jpg",
+  "author": "Nikhoxz",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:IWI_Galil_ACE_22NC_Ej%C3%A9rcito_de_Chile.jpg"
+ },
+ "svt40": {
+  "file": "img/items/svt40.jpg",
+  "title": "SVT-40_Mikkeli.jpg",
+  "author": "MKFI",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:SVT-40_Mikkeli.jpg"
+ },
+ "l96": {
+  "file": "img/items/l96.jpg",
+  "title": "Accuracy_AW_Ejército_Español.JPG",
+  "author": "Outisnn",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Accuracy_AW_Ej%C3%A9rcito_Espa%C3%B1ol.JPG"
+ },
+ "ksg": {
+  "file": "img/items/ksg.jpg",
+  "title": "Kel-tec_KSG1.jpg",
+  "author": "Mesa Tactical",
+  "license": "CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Kel-tec_KSG1.jpg"
+ },
+ "ump45": {
+  "file": "img/items/ump45.jpg",
+  "title": "HKUMP45.JPG",
+  "author": "Asams10 at English Wikipedia (Original text: Asams10 (talk))",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:HKUMP45.JPG"
+ },
+ "cz75": {
+  "file": "img/items/cz75.png",
+  "title": "1977_CZ-75.png",
+  "author": "Vidiot savant",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:1977_CZ-75.png"
+ },
+ "fiveseven": {
+  "file": "img/items/fiveseven.jpg",
+  "title": "FN_Five_Seven.jpg",
+  "author": "U.S. Bureau of Alcohol, Tobacco, Firearms and Explosives",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:FN_Five_Seven.jpg"
+ },
+ "rgo": {
+  "file": "img/items/rgo.jpg",
+  "title": "RGO_defensive_grenade_Navy.jpg",
+  "author": "Unknown",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:RGO_defensive_grenade_Navy.jpg"
+ },
+ "flare": {
+  "file": "img/items/flare.jpg",
+  "title": "Supportermarschen_2013_04.jpg",
+  "author": "Arild Vågen",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Supportermarschen_2013_04.jpg"
+ },
+ "ghillie": {
+  "file": "img/items/ghillie.jpg",
+  "title": "SAJ_ghillie_suit.jpg",
+  "author": "Boksi",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SAJ_ghillie_suit.jpg"
+ },
+ "hk417": {
+  "file": "img/items/hk417.jpg",
+  "title": "Heckler_&_Koch_HK417_Sniper_Rifle_of_PASKAL.JPG",
+  "author": "Rizuan",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Heckler_%26_Koch_HK417_Sniper_Rifle_of_PASKAL.JPG"
  }
 };

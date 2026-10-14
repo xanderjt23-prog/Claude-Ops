@@ -69,7 +69,7 @@ const CONCEAL_TOUCH = 20;
 
 // ---- map generation ---------------------------------------------------------
 const MAP_SIZES = { killhouse:[44,34], oldtown:[92,70], farm:[112,84], forest:[104,88], desert:[86,80], rustyard:[92,66], snowbase:[90,72], airfield:[120,80], ruins:[96,76],
-  mansion:[140,110], omaha:[120,84], highland:[120,90], harbor:[148,112], canyon:[148,112], suburbs:[116,88],
+  mansion:[140,110], omaha:[120,84], highland:[120,90], harbor:[148,112], canyon:[148,112], suburbs:[116,88], monastery:[128,100], dam:[136,104], station:[108,84], refinery:[120,90], resort:[128,96], coral:[128,96],
   oldtown_xl:[184,140], farm_xl:[224,168], desert_xl:[172,160] };
 // custom = { gen: true, theme, size } for a generated map (the seed picks the layout)
 function makeMap(id, seed, custom) {
@@ -79,7 +79,7 @@ function makeMap(id, seed, custom) {
               tint:new Uint8Array(w*h), spawns:[[],[]], ffa:[], zone:null, buildings:[] };
   const rng = mulberry32(seed);
   const B = builder(m, rng);
-  if (gen) { m.genOpts = { theme: custom.theme, spawn: w * h > 20000 ? 18 : 6 }; GEN.gen(m, B, rng); }
+  if (gen) { m.genOpts = { theme: custom.theme, prompt: custom.prompt, spawn: w * h > 20000 ? 18 : 6 }; GEN.gen(m, B, rng); }
   else if (custom) buildCustom(m, B, rng, custom); else GEN[id](m, B, rng);
   // clear around spawns
   [...m.spawns[0], ...m.spawns[1], ...m.ffa].forEach(s => B.clear(Math.floor(s.x/T)-1, Math.floor(s.y/T)-1, 3, 3));
@@ -90,7 +90,8 @@ function makeMap(id, seed, custom) {
 }
 
 // ---- vertical structure (3D): storeys, floors, stairs, ladders, roofs ------------
-// Heights in px (32 = one tile = ~1 m). A storey is 96 high.
+// Heights in px (32 = one tile = ~1 m). A storey is 96 high (a building can ask for taller ones: opts.storyH; m.sh
+// holds each tile's storey height).
 const SH = 96, WALL_LOW = 84, STEP = 14;
 // height of solid non-wall objects (what you can jump onto / shoot over)
 const OBJ_HT = { [O.HEDGE]: 70, [O.WIRE]: 30, [O.HEDGEHOG]: 40, [O.CRATE]: 30, [O.HAY]: 28, [O.SANDBAG]: 32, [O.TABLE]: 24, [O.FENCE]: 26, [O.CHAINLINK]: 60, [O.LOG]: 18, [O.BARREL]: 36,
@@ -121,7 +122,7 @@ function computeVertical(m) {
   const n = m.w * m.h;
   // slabs: bitmask of upper floors in a tile (bit k = a floor at k storeys up); stairAt: the ramps in a tile
   Object.assign(m, { wallTop: new Uint16Array(n), slabs: new Uint8Array(n), roof: new Uint16Array(n), roofKind: new Uint8Array(n), lintel: new Uint16Array(n),
-    upWin: new Uint8Array(n), bld: new Int16Array(n).fill(-1), stair: new Int16Array(n).fill(-1), ladder: new Int16Array(n).fill(-1), stairs: [], ladders: [], stairAt: new Map() });
+    upWin: new Uint8Array(n), sh: new Uint8Array(n).fill(SH), bld: new Int16Array(n).fill(-1), stair: new Int16Array(n).fill(-1), ladder: new Int16Array(n).fill(-1), stairs: [], ladders: [], stairAt: new Map() });
   const at = (x, y) => x >= 0 && y >= 0 && x < m.w && y < m.h ? y * m.w + x : -1;
   (m.buildings || []).forEach((b, bi) => {
     // skip buildings that later generation mostly erased
@@ -166,11 +167,12 @@ function computeVertical(m) {
       if (!wells.length && stories === 2) { const c = findWell(); if (c) wells.push(c); else stories = 1; }
     }
     b.stories = stories;
-    const roofH = st.tall || stories * SH, flat = st.roof === 'flat';
+    const sh = (b.opts && b.opts.storyH) || SH;
+    const roofH = st.tall || stories * sh, flat = st.roof === 'flat';
     const wallTop = flat ? roofH + 10 : roofH;
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) {
       const i = at(x, y); if (i < 0) continue;
-      m.bld[i] = bi; m.roof[i] = roofH; m.roofKind[i] = st.roof === 'flat' ? 1 : st.roof === 'peaked' ? 2 : 3;
+      m.bld[i] = bi; m.sh[i] = sh; m.roof[i] = roofH; m.roofKind[i] = st.roof === 'flat' ? 1 : st.roof === 'peaked' ? 2 : 3;
       const edge = !interior(x, y), o = m.obj[i];
       if (edge) {
         if (isWallObj(o) || o === O.WINDOW || o === O.BROKENWIN) { m.wallTop[i] = wallTop; if (o === O.WINDOW && stories >= 2) m.upWin[i] = stories; }
@@ -187,7 +189,7 @@ function computeVertical(m) {
         const ks = o ? [3, 2, 1, 0] : [0, 1, 2, 3], tiles = ks.map(tile), idx = m.stairs.length;
         tiles.forEach(i => { if (!m.stairAt.has(i)) m.stairAt.set(i, []); m.stairAt.get(i).push(idx); m.slabs[i] &= ~(1 << (r + 1)); if (r === 0) m.stair[i] = idx; });
         const sx = c.sx + c.dx * ks[0] - c.side[0] * o, sy = c.sy + c.dy * ks[0] - c.side[1] * o;
-        m.stairs.push({ tiles, dx: c.dx * d, dy: c.dy * d, sx, sy, h0: r * SH, h1: (r + 1) * SH, level: r, bld: bi,
+        m.stairs.push({ tiles, dx: c.dx * d, dy: c.dy * d, sx, sy, h0: r * sh, h1: (r + 1) * sh, level: r, bld: bi,
           approach: tile(o ? 4 : -1), landing: tile(o ? -1 : 4) });
       }
     });
@@ -196,7 +198,7 @@ function computeVertical(m) {
       const lw = Math.max(2, Math.floor((b.w - 2) * 0.4)), lx = b.x + 1 + lw, my = b.y + Math.floor(b.h / 2);
       for (let y = b.y + 1; y < b.y + b.h - 1; y++) for (let x = b.x + 1; x < lx; x++) m.slabs[at(x, y)] |= 2;
       const li = at(lx, my); m.obj[li] = 0; m.ladder[li] = m.ladders.length;
-      m.ladders.push({ x: lx, y: my, dx: -1, dy: 0, top: SH, bottom: 0 });
+      m.ladders.push({ x: lx, y: my, dx: -1, dy: 0, top: sh, bottom: 0 });
     }
     // outside ladder to a flat roof
     if (flat && st.ladder) {
@@ -230,7 +232,8 @@ function tileSolids(m, i, px, py, out) {
       const t = top || WALL_LOW;
       out.push([0, 22, 'obj']); if (o === O.WINDOW) out.push([22, 78, 'glass']);
       // open window holes on every upper storey
-      let lo = 78; for (let k = 1; m.upWin && k < m.upWin[i]; k++) { out.push([lo, k * SH + 22, 'obj']); lo = k * SH + 78; }
+      const sh = m.sh ? m.sh[i] : SH;
+      let lo = 78; for (let k = 1; m.upWin && k < m.upWin[i]; k++) { out.push([lo, k * sh + 22, 'obj']); if (o === O.WINDOW) out.push([k * sh + 22, k * sh + 78, 'glass']); lo = k * sh + 78; }
       out.push([lo, t, 'obj']);
     } else if (MAT[o].wall) {
       const t = top || WALL_LOW;
@@ -239,7 +242,7 @@ function tileSolids(m, i, px, py, out) {
   }
   if (!m.wallTop) { const b0 = m.base ? m.base[i] : 0; if (b0) for (const sp of out) { sp[0] += b0; sp[1] += b0; } return out; }
   if (m.lintel[i]) out.push([m.lintel[i], m.wallTop[i], 'lintel']);
-  if (m.slabs[i]) for (let k = 1; k < 8; k++) if (m.slabs[i] & (1 << k)) out.push([k * SH - 8, k * SH, 'slab']);
+  if (m.slabs[i]) { const sh = m.sh ? m.sh[i] : SH; for (let k = 1; k < 8; k++) if (m.slabs[i] & (1 << k)) out.push([k * sh - 8, k * sh, 'slab']); }
   if (m.roof[i]) out.push([m.roof[i] - 8, m.roofKind[i] === 1 ? m.roof[i] : m.roof[i] + 60, 'roof']);
   const sa = px !== undefined && m.stairAt && m.stairAt.get(i);
   if (sa) for (const si of sa) { const s = m.stairs[si]; out.push([s.h0 ? s.h0 - 8 : 0, stairHeight(m, s, px, py), 'stair']); }
@@ -370,6 +373,8 @@ const TERRAIN = {
   oldtown: { amp: 26, wave: 30 }, farm: { amp: 72, wave: 26 }, forest: { amp: 84, wave: 24 }, desert: { amp: 54, wave: 18 },
   snowbase: { amp: 50, wave: 24, edge: 230 }, airfield: { amp: 34, wave: 30, edge: 130 }, ruins: { amp: 62, wave: 22 },
   mansion: { amp: 30, wave: 32 }, omaha: { custom: 'omaha' }, highland: { custom: 'highland' },
+  refinery: { amp: 30, wave: 22 }, resort: { amp: 90, wave: 26, edge: 200 }, coral: { custom: 'coast2' },
+  monastery: { custom: 'peak' }, dam: { custom: 'dam' }, station: { amp: 12, wave: 40 },
   oldtown_xl: { amp: 40, wave: 40 }, farm_xl: { amp: 90, wave: 34, edge: 160 }, desert_xl: { amp: 70, wave: 24, edge: 120 },
 };
 function valueNoise(x, y, seed) {
@@ -395,6 +400,27 @@ function genTerrain(m) {
         // land rises gently from the sea (top) into low hills
         const sea = m.seaLine || m.h * 0.24;
         h = smooth01((y - sea) / 26) * 42 + fbm(x / 22, y / 22, sd) * 26 * smooth01((y - sea - 6) / 14);
+      } else if (prof.custom === 'coast2') {
+        // an island hill rising from the beach at the bottom of the map
+        h = 70 * smooth01((m.h - 16 - y) / 40) + fbm(x / 16, y / 16, sd) * 36 * smooth01((m.h - 22 - y) / 14);
+      } else if (prof.custom === 'peak') {
+        // a mountain with the monastery's level summit in the middle
+        // the level summit is a rounded rectangle that takes in the whole monastery and its curtain wall (27 x 20
+        // tiles from the centre, plus a walkway outside it), so the wall stands on flat ground
+        const px = Math.abs(x - m.w / 2) / 31, py = Math.abs(y - m.h / 2) / 24, r = Math.pow(Math.pow(px, 6) + Math.pow(py, 6), 1 / 6);
+        h = 220 * smooth01((2.15 - r) / 1.15) + fbm(x / 14, y / 14, sd) * 34 * smooth01((r - 1.08) / 0.3);
+      } else if (prof.custom === 'dam') {
+        // a valley with a reservoir held at crest level behind the dam, the river valley floor below it
+        const D = m.damSpec, dx = Math.abs(x - m.w / 2), side = 150 * smooth01((dx - D.half) / 22) + fbm(x / 16, y / 16, sd) * 30 * smooth01((dx - D.half) / 10);
+        h = y < D.damY ? Math.max(side, 128) : y <= D.damY + 4 ? 150 : side;
+      } else if (prof.custom === 'novel') {
+        // landforms for invented themes
+        const nx = x / m.w - 0.5, ny = y / m.h - 0.5, base = fbm(x / prof.wave, y / prof.wave, sd) * prof.amp;
+        if (prof.land === 'island') h = base * smooth01(1 - Math.hypot(nx * 2, ny * 2)) + 20 * smooth01(1 - Math.hypot(nx * 2.2, ny * 2.2));
+        else if (prof.land === 'crater') { const d = Math.hypot(nx * 1.6, ny * 2); h = 170 * smooth01((d - 0.12) / 0.1) * (1 - smooth01((d - 0.32) / 0.25)) + base * 0.5 - 30 * smooth01(1 - d / 0.14); }
+        else if (prof.land === 'plateau') { const d = Math.max(Math.abs(nx) * 2.3, Math.abs(ny) * 2.6), ramp = Math.abs(ny) < 0.04 || Math.abs(nx) < 0.03; h = 150 * smooth01((0.62 - d) / (ramp ? 0.25 : 0.05)) + base * 0.5; }
+        else if (prof.land === 'ridge') h = 140 * smooth01(1 - Math.abs(ny) / 0.22) * (0.6 + 0.4 * valueNoise(x / 14, 0, sd)) + base * 0.6;
+        else h = base * (prof.land === 'delta' ? 0.4 : 1);
       } else if (prof.custom === 'canyon') {
         // high mesas with steep cliffs either side of a winding valley; a few ramps lead up
         const c = m.canyon, d = Math.abs(y - c.vy(x)), ramp = Math.abs(((x + 9) % 34) - 17) < 3;
@@ -710,7 +736,7 @@ const GEN = {
     // the manor: 50 x 38, four storeys of stucco, two stairwells, marble halls and carpeted wings
     const mx = cx - 25, my = cy - 19, mw = 50, mh = 38;
     B.rectF(mx - 3, my - 3, mw + 6, mh + 6, F.GRAVEL);
-    B.building(mx, my, mw, mh, O.STUCCO, F.MARBLE, { doors: ['w', 'e', 's', 'n'], doorWidth: 3, stories: 4, wells: 2 });
+    B.building(mx, my, mw, mh, O.STUCCO, F.MARBLE, { doors: ['w', 'e', 's', 'n'], doorWidth: 3, stories: 4, wells: 2, storyH: 128 });
     // interior walls (they rise through every floor): two wings either side of a central hall
     const wall = (x0, y0, x1, y1, gaps) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) B.obj(x, y, O.STUCCO); gaps.forEach(([x, y, w, h]) => B.clear(x, y, w, h)); };
     wall(mx + 14, my + 1, mx + 14, my + mh - 2, [[mx + 14, my + 7, 1, 3], [mx + 14, my + 27, 1, 3]]);

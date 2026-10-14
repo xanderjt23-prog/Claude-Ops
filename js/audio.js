@@ -66,7 +66,7 @@ const Sfx = (() => {
     // newer additions and the WW2 arsenal
     stg44: ['ak', 1.06], ak12: ['ak', 1.04], garand: ['fal', 1.01], mk14: ['fal', 0.99], enfield: ['rifle', 1.08], k98k: ['rifle', 1.02],
     bar: ['mag', 1.06, 0.95], mg42: ['mag', 1.15, 0.95], luger: ['pistol', 1.08], p38: ['pistol', 1.0], glock18: ['pistol', 1.1, 0.9],
-    mp40: ['uzi', 0.86], sten: ['uzi', 0.82],
+    mp40: ['uzi', 0.86], sten: ['uzi', 0.82], hk417: ['fal', 1.0], galil: ['ak', 1.05], svt40: ['fal', 0.95], l96: ['rifle', 1.02], ksg: ['shotgun2', 0.97], ump45: ['mp5', 0.9], cz75: ['pistol', 1.04], fiveseven: ['pistol', 1.15, 0.9],
   };
   function shot(it, x, y, shooter, ammoKind, suppressed) {
     if (it.flame || it.spinup) { // continuous: re-trigger a burst segment while the trigger is held

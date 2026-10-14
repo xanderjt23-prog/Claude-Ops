@@ -77,7 +77,7 @@ const Profile = (() => {
   function buy(id) {
     const it = ITEMS[id];
     if (p.owned[id] || p.coins < it.coins) return false;
-    if ((it.cat === 'ammo' || it.cat === 'attach') && p.level < it.level) return false;
+    // anything can be bought with coins at any level (the level is only needed to unlock items with XP)
     p.coins -= it.coins; p.stats.spent += it.coins; p.owned[id] = true;
     notify(`Purchased ${it.name}`, 'unlock');
     checkAchievements(); save();

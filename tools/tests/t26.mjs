@@ -8,7 +8,7 @@ export default async (b) => {
       const c = Tex.cv(224, 168); MapRenderer.preview(m, c); g.drawImage(c, (k % 6) * 232 + 4, Math.floor(k / 6) * 196 + 4); g.fillStyle = '#fff'; g.font = '12px sans-serif'; g.fillText(label + ' ' + ms + 'ms', (k % 6) * 232 + 6, Math.floor(k / 6) * 196 + 188); k++;
       out.push(label + ': ' + ms + 'ms, ' + m.w + 'x' + m.h + ', buildings ' + m.buildings.length + ', stairs ' + m.stairs.length + ', spawns ' + m.spawns[0].length + '/' + m.spawns[1].length); } catch (e) { out.push(label + ' ERR ' + e.stack.split(NL).slice(0, 3).join(' | ')); } };
     MAPS.forEach((mp, i) => add(mp.id, () => makeMap(mp.id, 1000 + i)));
-    Object.keys(MAPGEN_THEMES).forEach((th, i) => add('gen-' + th, () => makeMap('gen', 5000 + i * 77, { gen: true, theme: th, size: ['medium', 'large', 'xl'][i % 3] })));
+    [...Object.keys(MAPGEN_THEMES), 'novel', 'novel', 'novel', 'novel', 'novel'].forEach((th, i) => add('gen-' + th + (th === 'novel' ? ':' + novelSpec(5000 + i * 77).name + ' (' + novelSpec(5000 + i * 77).land.id + '/' + novelSpec(5000 + i * 77).layout + ')' : ''), () => makeMap('gen', 5000 + i * 77, { gen: true, theme: th, size: ['medium', 'large', 'xl'][i % 3] })));
     window._sheet = sheet.toDataURL(); return out.join(NL); })()`);
   console.log(r);
   const data = await b.eval('window._sheet');

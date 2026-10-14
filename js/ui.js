@@ -36,7 +36,7 @@ const UI = (() => {
     $('#screen-' + name).classList.add('active');
     current = name;
     document.body.classList.toggle('ingame', name === 'game');
-    ({ weapons: renderWeapons, shop: renderShop, locker: renderLocker, achievements: renderAchievements, sp: () => { sp.step = 0; renderSP(); }, menu: refreshTop }[name] || (() => {}))();
+    ({ weapons: renderWeapons, shop: renderShop, locker: renderLocker, achievements: renderAchievements, profile: renderProfile, sp: () => { sp.step = 0; renderSP(); }, menu: refreshTop }[name] || (() => {}))();
     refreshTop();
   }
   document.addEventListener('click', e => {
@@ -123,7 +123,7 @@ const UI = (() => {
     } else if (it.cat === 'attach') {
       h += attStatsHTML(it);
       const guns = Object.values(ITEMS).filter(g => (g.cat === 'primary' || g.cat === 'sidearm') && attachFits(it.id, g.id));
-      h += `<p class="sub">Slot: <b>${esc(it.type)}</b> · Unlocks at level <b>${it.level}</b>. A gun carries one attachment per slot; choose them in the loadout.</p>
+      h += `<p class="sub">Slot: <b>${esc(it.type)}</b> · XP unlock from level <b>${it.level}</b>, or buy it in the Shop at any level. A gun carries one attachment per slot; choose them in the loadout.</p>
         <h4 style="margin:10px 0 6px">Fits these guns (${guns.length})</h4><div class="att-guns">${guns.map(g => `<span class="${owned(g.id) ? 'own' : ''}">${esc(g.name)}</span>`).join('')}</div>`;
     } else if (it.cat === 'melee') {
       h += statRow('Damage', it.dmg, it.dmg / 110);
@@ -232,18 +232,18 @@ const UI = (() => {
   const SHOP_TABS = [['primary', 'Primary'], ['sidearm', 'Sidearms'], ['melee', 'Melee'], ['armor', 'Body Armour'], ['gear', 'Night Gear'], ['ammo', 'Ammunition'], ['attach', 'Attachments'], ['utility', 'Utilities'], ['camo', 'Weapon Camos'], ['uniform', 'Uniforms']];
   function ammoCardHTML(it) {
     const own = owned(it.id), lvlOk = P.level >= it.level;
-    return `<div class="card ammo-card" data-ammo="${it.id}"><canvas width="300" height="120" data-cart="${it.id}"></canvas>${own ? '<span class="own">OWNED</span>' : lvlOk ? '' : `<span class="lock">🔒 Lv ${it.level}</span>`}
+    return `<div class="card ammo-card" data-ammo="${it.id}"><canvas width="300" height="120" data-cart="${it.id}"></canvas>${own ? '<span class="own">OWNED</span>' : lvlOk ? '' : `<span class="lock">Lv ${it.level}</span>`}
       <div class="nm">${esc(it.name)}</div><div class="cal">${esc(CALIBERS[it.cal].name)}</div><div class="meta">${esc(it.type)} · Level ${it.level}</div>
-      ${own ? '<div class="price">Owned</div>' : `<div class="price"><span class="ico coin">¢</span>${fmt(it.coins)}</div><button class="primary" data-buy="${it.id}" ${P.coins < it.coins || !lvlOk ? 'disabled' : ''}>${lvlOk ? 'Buy' : 'Level ' + it.level}</button>`}</div>`;
+      ${own ? '<div class="price">Owned</div>' : `<div class="price"><span class="ico coin">¢</span>${fmt(it.coins)}</div><button class="primary" data-buy="${it.id}" ${P.coins < it.coins ? 'disabled' : ''}>Buy</button>`}</div>`;
   }
   function showAmmo(id) {
     const it = ITEMS[id], k = AMMO_KINDS[it.kind], guns = gunsForCaliber(it.cal);
     $('#ammo-body').innerHTML = `<canvas width="600" height="160" data-cart="${id}"></canvas>
-      <h3 style="margin-top:10px">${esc(it.name)}</h3><p class="sub"><b style="color:var(--accent2)">${esc(CALIBERS[it.cal].name)}</b> · ${esc(k.label)} · Unlocks at level ${it.level} · ¢ ${fmt(it.coins)}</p>
+      <h3 style="margin-top:10px">${esc(it.name)}</h3><p class="sub"><b style="color:var(--accent2)">${esc(CALIBERS[it.cal].name)}</b> · ${esc(k.label)} · buy at any level · ¢ ${fmt(it.coins)}</p>
       <p>${esc(it.desc)}</p>
       <h3>Fits these guns</h3><div class="gun-list">${guns.map(g => cardHTML(g.id, { meta: owned(g.id) ? 'You own this' : 'Not owned' })).join('')}</div>
       <p class="sub">Rounds only fit guns of the same calibre. Choose which round each gun fires in its loadout slot. Once bought, a round type is yours for good.</p>
-      <div class="row">${owned(id) ? '<span class="owned-badge">✔ Owned</span>' : `<button class="primary" data-buy="${id}" ${P.coins < it.coins || P.level < it.level ? 'disabled' : ''}>Buy for ¢ ${fmt(it.coins)}</button>${P.level < it.level ? `<span class="warn">Requires level ${it.level}</span>` : ''}`}<button id="ammo-close" style="margin-left:auto">Close</button></div>`;
+      <div class="row">${owned(id) ? '<span class="owned-badge">✔ Owned</span>' : `<button class="primary" data-buy="${id}" ${P.coins < it.coins ? 'disabled' : ''}>Buy for ¢ ${fmt(it.coins)}</button>`}<button id="ammo-close" style="margin-left:auto">Close</button></div>`;
     $('#ammo-body').querySelectorAll('canvas[data-cart]').forEach(drawCart);
     $('#ammo-modal').classList.remove('hidden');
     $('#ammo-close').onclick = () => $('#ammo-modal').classList.add('hidden');
@@ -271,9 +271,9 @@ const UI = (() => {
         ${store[c.id] ? '<span class="own">OWNED</span><div class="price">Owned</div>' : `<div class="price"><span class="ico coin">¢</span>${fmt(c.price)}</div><button class="primary" data-buycamo="${c.id}" ${P.coins < c.price ? 'disabled' : ''}>Buy</button>`}</div>`).join('');
     } else {
       html = Object.values(ITEMS).filter(it => it.cat === sCat && !it.noImage).sort((a, b) => sCat === 'attach' ? a.level - b.level || a.coins - b.coins : a.coins - b.coins).map(it => { const lvOk = it.cat !== 'attach' || P.level >= it.level; return `<div class="card">
-        <div class="imgwrap">${imgTag(it.id)}</div>${owned(it.id) ? '<span class="own">OWNED</span>' : lvOk ? '' : `<span class="lock">🔒 Lv ${it.level}</span>`}
+        <div class="imgwrap">${imgTag(it.id)}</div>${owned(it.id) ? '<span class="own">OWNED</span>' : lvOk ? '' : `<span class="lock">Lv ${it.level}</span>`}
         <div class="nm">${esc(it.name)}</div><div class="meta">${esc(it.type)} · ${it.weight} kg${it.cat === 'attach' ? ' · Lv ' + it.level : ''}</div>
-        ${owned(it.id) ? '<div class="price">Owned</div>' : `<div class="price"><span class="ico coin">¢</span>${fmt(it.coins)}</div><button class="primary" data-buy="${it.id}" ${P.coins < it.coins || !lvOk ? 'disabled' : ''}>${lvOk ? 'Buy' : 'Level ' + it.level}</button>`}
+        ${owned(it.id) ? '<div class="price">Owned</div>' : `<div class="price"><span class="ico coin">¢</span>${fmt(it.coins)}</div><button class="primary" data-buy="${it.id}" ${P.coins < it.coins ? 'disabled' : ''}>Buy</button>`}
         <button data-view="${it.id}">View stats</button></div>`; }).join('');
     }
     $('#s-grid').innerHTML = html;
@@ -340,6 +340,8 @@ const UI = (() => {
     $('#l-camos').innerHTML = `<div class="face-tools"><h4>PAINT</h4><div class="swatches">${FACE_COLORS.map(c => `<button class="sw ${!facePaint.erase && facePaint.color === c ? 'sel' : ''}" data-fcol="${c}" style="background:${c}"></button>`).join('')}</div>
       <h4>BRUSH</h4><div class="opts">${[[1, 'Fine'], [2, 'Medium'], [4, 'Wide']].map(([s, n]) => `<button class="opt ${facePaint.size === s ? 'sel' : ''}" data-fsize="${s}">${n}</button>`).join('')}<button class="opt ${facePaint.erase ? 'sel' : ''}" data-ferase>Eraser</button></div>
       <h4>PRESETS</h4><div class="opts">${[['stripes', 'Camo stripes'], ['woodland', 'Woodland'], ['eyeblack', 'Eye black'], ['warpaint', 'War paint'], ['skull', 'Skull']].map(([k, n]) => `<button class="opt" data-fpre="${k}">${n}</button>`).join('')}</div>
+      <h4>PICTURE</h4><div class="row" style="margin:4px 0"><button data-fupload>📷 Upload a picture…</button><input type="file" accept="image/*" data-ffile hidden></div>
+      <p class="sub" style="font-size:12px;margin:0">The middle of the picture is fitted onto the face (you can paint over it afterwards).</p>
       <div class="row"><button data-fundo>↶ Undo</button><button data-fclear>Clear face</button></div>
       <p class="sub">Paint straight onto the face (left). Your soldier wears it in every match and other players see it online. Bots never wear face paint.</p></div>`;
     const T2 = $('#l-camos');
@@ -349,6 +351,21 @@ const UI = (() => {
     const snapshot = () => { const c = faceLayer(); facePaint.strokes.push(c.getContext('2d').getImageData(0, 0, 64, 64)); if (facePaint.strokes.length > 30) facePaint.strokes.shift(); };
     T2.querySelectorAll('[data-fpre]').forEach(b => b.onclick = () => { snapshot(); const g = faceLayer().getContext('2d'); g.globalCompositeOperation = 'source-over'; FACE_PRESETS[b.dataset.fpre](g); redrawFace(); saveFace(); Sfx.ui(); });
     T2.querySelector('[data-fclear]').onclick = () => { snapshot(); faceLayer().getContext('2d').clearRect(0, 0, 64, 64); redrawFace(); saveFace(); };
+    const file = T2.querySelector('[data-ffile]');
+    T2.querySelector('[data-fupload]').onclick = () => file.click();
+    file.onchange = () => {
+      const f = file.files && file.files[0]; if (!f) return;
+      if (!/^image\//.test(f.type)) return toast('Please choose an image file.', 'error');
+      const url = URL.createObjectURL(f), im = new Image();
+      im.onload = () => {
+        // crop the centre square and shrink it to the 64 x 64 face (the game only ever keeps this small copy)
+        snapshot(); const g = faceLayer().getContext('2d'), s = Math.min(im.width, im.height);
+        g.clearRect(0, 0, 64, 64); g.imageSmoothingQuality = 'high'; g.drawImage(im, (im.width - s) / 2, (im.height - s) / 2, s, s, 0, 0, 64, 64);
+        URL.revokeObjectURL(url); file.value = ''; redrawFace(); saveFace(); renderLockerList(); Sfx.ui(); toast('Picture added to your face paint');
+      };
+      im.onerror = () => { URL.revokeObjectURL(url); toast('That image could not be opened.', 'error'); };
+      im.src = url;
+    };
     T2.querySelector('[data-fundo]').onclick = () => { const s = facePaint.strokes.pop(); if (!s) return; faceLayer().getContext('2d').putImageData(s, 0, 0); redrawFace(); saveFace(); };
     const ed = $('#face-ed');
     if (!ed.dataset.bound) {
@@ -421,6 +438,35 @@ const UI = (() => {
     Profile.save(); Sfx.ui(); renderLocker();
   });
 
+  // ------------------------------------------------------------------ PROFILE: career statistics
+  function renderProfile() {
+    const s = P.stats, games = s.games || 0, wins = s.wins || 0, pct = (a, b) => b ? Math.round(a / b * 1000) / 10 + '%' : '—';
+    const kd = s.deaths ? (s.kills / s.deaths).toFixed(2) : s.kills ? s.kills.toFixed(2) : '—', kda = s.deaths ? ((s.kills + s.assists) / s.deaths).toFixed(2) : '—';
+    const hrs = Math.floor((s.timePlayed || 0) / 3600), mins = Math.floor((s.timePlayed || 0) % 3600 / 60);
+    const fav = Object.entries(P.weaponKills || {}).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const done = ACHIEVEMENTS.filter(a => P.achievements[a.id]).length, owned = Profile.statValue('owned');
+    const tile = (label, value, sub) => `<div class="pstat"><small>${label}</small><b>${value}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
+    const modeName = id => (GAMEMODES.find(m => m.id === id) || { name: id }).name;
+    $('#profile-body').innerHTML = `
+      <div class="phead">${P.face ? `<img class="pface" src="${P.face}">` : '<div class="pface blank">🪖</div>'}<div><h2 style="margin:0">${esc(P.name)}</h2><p class="sub" style="margin:4px 0 0">Level <b>${P.level}</b> · ${fmt(P.totalXp || 0)} XP earned in total · ${done}/${ACHIEVEMENTS.length} achievements · ${owned} items owned</p></div></div>
+      <h3>Combat</h3><div class="pgrid">
+        ${tile('K/D ratio', kd, `${fmt(s.kills)} kills · ${fmt(s.deaths)} deaths`)}${tile('KDA', kda, `${fmt(s.assists)} assists`)}
+        ${tile('Accuracy', pct(s.hits || 0, s.shots || 0), `${fmt(s.hits || 0)} hits / ${fmt(s.shots || 0)} shots`)}${tile('Headshot rate', pct(s.headshots || 0, s.kills || 0), `${fmt(s.headshots || 0)} headshot kills`)}
+        ${tile('Damage dealt', fmt(s.damage || 0), `${fmt(s.taken || 0)} taken`)}${tile('Best streak', s.bestStreak || 0, `best multi-kill ×${s.bestMulti || 0}`)}
+        ${tile('Long shots', s.longShots || 0, 'kills over 50 m')}${tile('Cover destroyed', fmt(s.destroyed || 0))}
+      </div>
+      <h3>Battles</h3><div class="pgrid">
+        ${tile('Battles played', fmt(games), `${fmt(s.onlineGames || 0)} online · ${fmt(s.massiveGames || 0)} massive`)}${tile('Win rate', pct(wins, games), `${fmt(wins)} wins · ${fmt(s.losses || 0)} losses · ${fmt(s.draws || 0)} draws`)}
+        ${tile('Flawless wins', s.flawless || 0, 'won without dying')}${tile('Time in battle', hrs ? `${hrs} h ${mins} m` : `${mins} m`)}
+      </div>
+      <div class="pgrid">${GAMEMODES.map(m => { const x = (P.modeStats || {})[m.id] || { games: 0, wins: 0 }; return tile(m.name, pct(x.wins, x.games), `${x.wins} / ${x.games} won`); }).join('')}</div>
+      <h3>Economy</h3><div class="pgrid">
+        ${tile('Coins spent', '¢ ' + fmt(s.spent || 0))}${tile('Coins earned', '¢ ' + fmt(s.coinsEarned || 0), 'from battles')}${tile('Coins now', '¢ ' + fmt(P.coins))}${tile('XP earned', fmt(s.xpEarned || 0), 'from battles')}
+      </div>
+      <div class="pcols"><div><h3>Favourite weapons</h3>${fav.length ? `<table class="sb">${fav.map(([id, n]) => `<tr><td>${esc(ITEMS[id] ? ITEMS[id].name : id)}</td><td>${n} kills</td></tr>`).join('')}</table>` : '<p class="sub">Get some kills to see your favourites.</p>'}</div>
+      <div><h3>Recent battles</h3>${(P.history || []).length ? `<table class="sb"><tr><th>RESULT</th><th>MODE</th><th>MAP</th><th>K / D / A</th><th>WHEN</th></tr>${P.history.slice(0, 12).map(h => `<tr><td class="${h.result}">${h.result.toUpperCase()}</td><td>${esc(modeName(h.mode))}${h.ffa ? ' (FFA)' : ''}${h.online ? ' 🌐' : ''}</td><td>${esc(h.map)}</td><td>${h.k} / ${h.d} / ${h.a}</td><td>${new Date(h.t).toLocaleDateString()}</td></tr>`).join('')}</table>` : '<p class="sub">No battles yet.</p>'}</div></div>`;
+  }
+
   // ------------------------------------------------------------------ ACHIEVEMENTS
   const MEDAL = { kills: '🎯', bestMulti: '💥', bestStreak: '🔥', assists: '🤝', wins: '🏆', ffaWins: '👑', zoneWins: '🚩', dmWins: '💀', destroyed: '🧱', explosiveKills: '💣',
     fireKills: '🔥', sniperKills: '🔭', meleeKills: '🔪', wallbangs: '🧱', headshots: '⌖', level: '⭐', owned: '🗄️', spent: '💰', onlineGames: '🌐', games: '🎖️',
@@ -471,7 +517,7 @@ const UI = (() => {
       const s = e.target.closest('[data-slot]'); if (s) { slot = s.dataset.slot; Sfx.ui(); draw(); return; }
       const at = e.target.closest('[data-setatt]');
       if (at) { const gun = get(slot), [sl, id] = at.dataset.setatt.split(':');
-        if (id && !owned(id)) { const a = ITEMS[id]; toast(`${a.name}: unlock it in Weapons → Attachments (${fmt(a.xp)} XP, level ${a.level}) or buy it in the Shop for ¢${fmt(a.coins)}.`, 'error'); return; }
+        if (id && !owned(id)) { const a = ITEMS[id]; toast(`${a.name}: unlock it in Weapons → Attachments (${fmt(a.xp)} XP, level ${a.level}) or buy it in the Shop (any level) for ¢${fmt(a.coins)}.`, 'error'); return; }
         const cur = Object.assign({}, lo.att[gun] || {}); if (id) cur[sl] = id; else delete cur[sl];
         if (Object.keys(cur).length) lo.att[gun] = cur; else delete lo.att[gun];
         Sfx.ui(); draw(); onChange && onChange(lo); return; }
@@ -485,7 +531,7 @@ const UI = (() => {
   }
 
   // ------------------------------------------------------------------ SINGLE PLAYER
-  const sp = { step: 0, format: 'team', teams: 2, size: 2, ffaCount: 8, ff: false, mode: 'deathmatch', lives: 1, minutes: 5, map: 'oldtown', night: false, massive: false };
+  const sp = { step: 0, format: 'team', teams: 2, size: 2, ffaCount: 8, ff: false, mode: 'deathmatch', lives: 1, minutes: 5, map: 'oldtown', night: false, massive: false, mods: [] };
   const previewCache = {};
   // built-in maps plus the player's custom maps (host's maps in a lobby)
   function allMaps(st) { return MAPS.filter(m => !!m.massive === !!(st && st.massive)); }
@@ -504,9 +550,9 @@ const UI = (() => {
   const isMassiveSize = s => s === 'massive';
   // what to build for a map id: a built-in map, the generator draft ('gen') or a saved map ('sm_...')
   function mapSpec(id, saved) {
-    if (id === 'gen' && genDraft) return { mapId: 'gen', seed: genDraft.seed, custom: { gen: true, theme: genDraft.theme, size: genDraft.size }, name: genMapName(genDraft.theme, genDraft.seed), size: MAPGEN_SIZES[genDraft.size].name };
+    if (id === 'gen' && genDraft) return { mapId: 'gen', seed: genDraft.seed, custom: { gen: true, theme: genDraft.theme, size: genDraft.size, prompt: genDraft.prompt }, name: genDraft.prompt ? descMapName(genDraft.prompt, genDraft.seed) : genMapName(genDraft.theme, genDraft.seed), size: MAPGEN_SIZES[genDraft.size].name };
     const sm = (saved || savedMaps()).find(s => s.id === id);
-    if (sm) return { mapId: 'gen', seed: sm.seed, custom: { gen: true, theme: sm.theme, size: sm.size }, name: sm.name, size: MAPGEN_SIZES[sm.size].name, saved: true };
+    if (sm) return { mapId: 'gen', seed: sm.seed, custom: { gen: true, theme: sm.theme, size: sm.size, prompt: sm.prompt }, name: sm.name, size: MAPGEN_SIZES[sm.size].name, saved: true };
     const mp = MAPS.find(m => m.id === id);
     return mp ? { mapId: id, seed: mapSeed(id), custom: null, name: mp.name, size: mp.size } : null;
   }
@@ -518,7 +564,7 @@ const UI = (() => {
   }
   function mapPreview(id, canvas, saved) {
     const s = mapSpec(id, saved); if (!s) return;
-    const key = s.mapId + ':' + s.seed + ':' + (s.custom ? s.custom.theme + s.custom.size : '');
+    const key = s.mapId + ':' + s.seed + ':' + (s.custom ? s.custom.theme + s.custom.size + (s.custom.prompt || '') : '');
     if (!previewCache[key]) { const c = Tex.cv(224, 168); MapRenderer.preview(makeMap(s.mapId, s.seed, s.custom), c); previewCache[key] = c; }
     canvas.getContext('2d').drawImage(previewCache[key], 0, 0, canvas.width, canvas.height);
   }
@@ -537,27 +583,44 @@ const UI = (() => {
   function renderGenerator(body, st, done) {
     const sizes = st.massive ? ['massive'] : ['medium', 'large', 'xl'];
     if (!sizes.includes(gen.size)) gen.size = sizes[0];
-    const roll = () => { const keys = Object.keys(MAPGEN_THEMES); genDraft = { theme: gen.theme === 'random' ? keys[Math.floor(Math.random() * keys.length)] : gen.theme, size: gen.size, seed: Math.floor(Math.random() * 1e9) }; };
+    const roll = () => { const keys = Object.keys(MAPGEN_THEMES).filter(k => !MAPGEN_THEMES[k].hidden); genDraft = { theme: gen.theme === 'random' ? keys[Math.floor(Math.random() * keys.length)] : gen.theme, size: gen.size, seed: Math.floor(Math.random() * 1e9) }; };
     if (!genDraft || genDraft.size !== gen.size && !sizes.includes(genDraft.size)) roll();
     const s = mapSpec('gen'), th = MAPGEN_THEMES[genDraft.theme];
     body.innerHTML = `<h2>🎲 Map Generator</h2><div class="gen-panel"><div>
-        <h3>Theme</h3><div class="opts">${['random', ...Object.keys(MAPGEN_THEMES)].map(k => `<button class="opt ${gen.theme === k ? 'sel' : ''}" data-gtheme="${k}">${k === 'random' ? '🎲 Random' : esc(MAPGEN_THEMES[k].name)}</button>`).join('')}</div>
+        <h3>Theme</h3><div class="opts">${['random', ...Object.keys(MAPGEN_THEMES).filter(k => !MAPGEN_THEMES[k].hidden)].map(k => `<button class="opt ${gen.theme === k ? 'sel' : ''}" data-gtheme="${k}">${k === 'random' ? '🎲 Random' : esc(MAPGEN_THEMES[k].name)}</button>`).join('')}</div>
         <h3>Size</h3><div class="opts">${sizes.map(k => `<button class="opt ${gen.size === k ? 'sel' : ''}" data-gsize="${k}">${MAPGEN_SIZES[k].name} <small>${MAPGEN_SIZES[k].wh.join('×')}</small></button>`).join('')}</div>
         <div class="row"><button class="primary" data-generate>🎲 Generate a new map</button></div>
+        <h3>…or describe the map you want</h3>
+        <textarea data-gprompt rows="3" maxlength="300" placeholder="e.g. a casino in the desert with a big car park · an abandoned hospital in a snowy forest · a museum by a river · two warehouses at the docks" style="width:100%;box-sizing:border-box;font:inherit;padding:6px;border-radius:6px">${esc(gen.prompt || '')}</textarea>
+        <div class="row"><button class="primary" data-gdescribe>✨ Generate from description</button><span class="sub" data-gstatus></span></div>
         <p class="sub">Every map is generated from a random seed, so each one is different. Save the ones you like: they appear with the other maps (and in your online lobbies) until you delete them.</p></div>
       <div><canvas id="gen-prev" width="448" height="336"></canvas>
         <div class="row" style="margin:6px 0"><b style="font-size:18px">${esc(s.name)}</b><span class="sub">${esc(th.name)} · ${esc(s.size)} · seed ${genDraft.seed}</span></div>
-        <p class="sub" style="margin:0 0 6px">${esc(th.desc)}</p>
+        <p class="sub" style="margin:0 0 6px">${esc(genDraft.theme === 'novel' ? novelSpec(genDraft.seed).desc : genDraft.prompt ? '“' + genDraft.prompt + '” — ' + descSummary(parseMapDesc(genDraft.prompt)) : th.desc)}</p>
         <div class="row"><button class="primary" data-genplay>▶ Play this map</button><button data-gensave>💾 Save map</button><button data-genback>← All maps</button></div></div></div>`;
     const c = body.querySelector('#gen-prev'); MapRenderer.preview(makeMap(s.mapId, s.seed, s.custom), c);
     body.querySelectorAll('[data-gtheme]').forEach(b => b.onclick = () => { gen.theme = b.dataset.gtheme; roll(); Sfx.ui(); renderGenerator(body, st, done); });
     body.querySelectorAll('[data-gsize]').forEach(b => b.onclick = () => { gen.size = b.dataset.gsize; roll(); Sfx.ui(); renderGenerator(body, st, done); });
     body.querySelector('[data-generate]').onclick = () => { roll(); Sfx.ui(); renderGenerator(body, st, done); };
+    // from a description: build several candidate layouts and keep the one that plays best (a moment per candidate)
+    body.querySelector('[data-gprompt]').oninput = e => { gen.prompt = e.target.value; };
+    body.querySelector('[data-gdescribe]').onclick = () => {
+      const prompt = (gen.prompt || '').trim(); if (!prompt) { toast('Describe the map first'); return; }
+      Sfx.ui(); const status = body.querySelector('[data-gstatus]'), btn = body.querySelector('[data-gdescribe]'); btn.disabled = true;
+      const N = 8, base = Math.floor(Math.random() * 1e9); let best = null, bs = -1, k = 0;
+      const step = () => {
+        const seed = (base + k * 7919) % 1e9;
+        try { const mm = makeMap('gen', seed, { gen: true, theme: 'described', size: gen.size, prompt }); const sc = scoreMap(mm); if (sc > bs) { bs = sc; best = seed; } } catch (e) { console.error(e); }
+        k++; status.textContent = `Building layout ${k} of ${N}…`;
+        if (k < N) setTimeout(step, 0); else { genDraft = { theme: 'described', size: gen.size, seed: best, prompt }; renderGenerator(body, st, done); }
+      };
+      status.textContent = 'Reading your description…'; setTimeout(step, 30);
+    };
     body.querySelector('[data-genplay]').onclick = () => { Sfx.ui(); done('gen'); };
     body.querySelector('[data-gensave]').onclick = () => {
       const name = (prompt('Name your map:', s.name) || '').trim().slice(0, 28); if (!name) return;
       const id = 'sm_' + Date.now().toString(36);
-      savedMaps().push({ id, name, theme: genDraft.theme, size: genDraft.size, seed: genDraft.seed }); Profile.save();
+      savedMaps().push({ id, name, theme: genDraft.theme, size: genDraft.size, seed: genDraft.seed, prompt: genDraft.prompt }); Profile.save();
       toast(`Saved "${name}" to your maps`); Profile.recheck(); refreshTop(); done(id);
     };
     body.querySelector('[data-genback]').onclick = () => { Sfx.ui(); done(null); };
@@ -576,8 +639,11 @@ const UI = (() => {
             : Array.from({ length: Math.floor(lim / st.teams) }, (_, k) => k + 1).map(n => `<button class="opt ${st.size === n ? 'sel' : ''}" data-size="${n}" ${dis}>${n}</button>`).join('')}
           <span class="sub">= ${st.teams} × <span data-sizeval>${st.size}</span> = <b data-sizetot>${st.teams * st.size}</b> / ${lim} players</span></div>
         <div class="row"><span class="toggle ${st.ff ? 'on' : ''}" data-ff ${tog()}><i></i> Friendly fire</span></div>`}
-      <div class="row"><span class="toggle ${st.night ? 'on' : ''}" data-night ${tog()}><i></i> 🌙 Night mode</span><span class="sub" style="font-size:13px">Darkness: you see only what is lit, or use night vision / thermal gear.</span></div>`;
+      <div class="row"><span class="toggle ${st.night ? 'on' : ''}" data-night ${tog()}><i></i> 🌙 Night mode</span><span class="sub" style="font-size:13px">Darkness: you see only what is lit, or use night vision / thermal gear.</span></div>
+      <h3>Modifiers <small class="sub" style="text-transform:none;letter-spacing:0">optional · pick any number</small></h3>
+      <div class="mods">${MODIFIERS.map(m => `<button class="mod ${(st.mods || []).includes(m.id) ? 'sel' : ''}" data-mod="${m.id}" title="${esc(m.desc)}" ${dis}><span>${m.icon}</span><b>${esc(m.name)}</b><small>${esc(m.desc)}</small></button>`).join('')}</div>`;
   }
+  const modsText = st => (st.mods || []).map(id => MODIFIERS.find(m => m.id === id)).filter(Boolean).map(m => m.icon + ' ' + m.name).join(', ');
   function modeHTML(st, editable, votes) {
     const ffa = st.format === 'ffa';
     return `<h3>Game mode</h3><div class="mode-cards">${GAMEMODES.map(m => `<button class="mode-card ${st.mode === m.id ? 'sel' : ''}" data-mode="${m.id}" ${editable && !(m.teamsOnly && ffa) ? '' : 'disabled'}><b>${m.name}${votes ? ` <small class="votes" style="position:static">${votes[m.id] || 0}</small>` : ''}</b><span>${m.desc}</span></button>`).join('')}</div>
@@ -600,6 +666,7 @@ const UI = (() => {
     root.querySelectorAll('[data-ffacount]').forEach(r => { r.oninput = () => { st.ffaCount = +r.value; r.nextElementSibling.textContent = r.value; }; r.onchange = rerender; });
     root.querySelectorAll('[data-ff]').forEach(t => t.onclick = () => { st.ff = !st.ff; rerender(); });
     root.querySelectorAll('[data-night]').forEach(t => t.onclick = () => { st.night = !st.night; rerender(); });
+    root.querySelectorAll('[data-mod]').forEach(b => b.onclick = () => { const id = b.dataset.mod, l = st.mods = (st.mods || []).slice(); const k = l.indexOf(id); if (k >= 0) l.splice(k, 1); else l.push(id); Sfx.ui(); rerender(); });
     bindModeOptions(root, st, rerender);
   }
   function bindModeOptions(root, st, done) {
@@ -657,7 +724,7 @@ const UI = (() => {
     if (sp.format === 'ffa') makeBots(sp.ffaCount - 1, 0, tier, used).forEach((b, i) => { b.team = i + 1; parts.push(b); });
     else { parts = parts.concat(makeBots(sp.size - 1, 0, tier, used)); for (let t = 1; t < sp.teams; t++) parts = parts.concat(makeBots(sp.size, t, tier, used)); }
     const ffa = sp.format === 'ffa';
-    lastSP = { mapId: spec.mapId, seed: spec.seed, customMap: spec.custom, mapName: spec.name, mode: ffa && sp.mode === 'snd' ? 'deathmatch' : sp.mode, ffa, friendlyFire: sp.ff, lives: sp.lives, minutes: sp.minutes, night: sp.night,
+    lastSP = { mapId: spec.mapId, seed: spec.seed, customMap: spec.custom, mapName: spec.name, mode: ffa && sp.mode === 'snd' ? 'deathmatch' : sp.mode, ffa, friendlyFire: sp.ff, lives: sp.lives, minutes: sp.minutes, night: sp.night, mods: (sp.mods || []).slice(),
       teams: ffa ? 0 : sp.teams, massive: !!sp.massive, teamNames: TEAM_NAMES.slice(), participants: parts, localId: 'me', role: 'local' };
     launch(lastSP);
   }
@@ -711,7 +778,12 @@ const UI = (() => {
       if (online) Profile.stat('onlineGames', 1);
       if (won) { Profile.stat('wins', 1); if (res.ffa) Profile.stat('ffaWins', 1); if (res.mode === 'zone') Profile.stat('zoneWins', 1); if (res.mode === 'deathmatch') Profile.stat('dmWins', 1); if (res.mode === 'snd') Profile.stat('sndWins', 1); }
       if (res.night) Profile.stat('nightKills', me.kills);
-      ['explosiveKills', 'fireKills', 'sniperKills', 'meleeKills', 'wallbangs', 'destroyed', 'headshots', 'longShots', 'proneKills', 'quietKills'].forEach(k => Profile.stat(k, me.ms[k] || 0));
+      ['explosiveKills', 'fireKills', 'sniperKills', 'meleeKills', 'wallbangs', 'destroyed', 'headshots', 'longShots', 'proneKills', 'quietKills', 'shots', 'hits', 'damage', 'taken'].forEach(k => Profile.stat(k, Math.round(me.ms[k] || 0)));
+      Profile.stat('timePlayed', res.duration || 0); if (!won && res.winner >= 0) Profile.stat('losses', 1); if (res.winner < 0) Profile.stat('draws', 1);
+      Object.entries(me.ms.weaponKills || {}).forEach(([w, n]) => { P.weaponKills = P.weaponKills || {}; P.weaponKills[w] = (P.weaponKills[w] || 0) + n; });
+      P.modeStats = P.modeStats || {}; const msx = P.modeStats[res.mode] = P.modeStats[res.mode] || { games: 0, wins: 0 }; msx.games++; if (won) msx.wins++;
+      P.history = [{ t: Date.now(), map: cfg.mapName || (MAPS.find(x => x.id === cfg.mapId) || {}).name || cfg.mapId, mode: res.mode, ffa: res.ffa, result: res.winner < 0 ? 'draw' : won ? 'win' : 'loss',
+        k: me.kills, d: me.deaths, a: me.assists, online, massive: !!cfg.massive }].concat(P.history || []).slice(0, 30);
       Profile.statMax('bestMulti', me.ms.bestMulti); Profile.statMax('bestStreak', me.ms.bestStreak);
       if (res.mode === 'score') { Profile.statMax('bestScore', me.score || 0); if (won) Profile.stat('scoreWins', 1); }
       if (won && me.deaths === 0) Profile.stat('flawless', 1);
@@ -720,7 +792,7 @@ const UI = (() => {
       if (cfg.customMap && cfg.customMap.gen) Profile.stat('genGames', 1);
       P.mapsPlayed = P.mapsPlayed || {}; P.mapsPlayed[cfg.customMap && cfg.customMap.gen ? 'gen:' + cfg.customMap.theme + ':' + cfg.seed : cfg.mapId] = 1;
       const lvl0 = P.level;
-      Profile.addCoins(coins); Profile.addXp(xp);
+      Profile.addCoins(coins); Profile.addXp(xp); Profile.stat('coinsEarned', coins); Profile.stat('xpEarned', xp);
       if (P.level > lvl0) R.push([`Level up! ${lvl0} → ${P.level}`, 0, 0]);
     }
     refreshTop();
@@ -731,7 +803,7 @@ const UI = (() => {
     const teamScore = t => res.units.filter(u => u.team === t).reduce((s, u) => s + (u.score || 0), 0);
     const scoreText = res.mode === 'score' && !res.ffa ? ' · ' + [...new Set(res.units.map(u => u.team))].sort().map(t => `${esc((res.teamNames || TEAM_NAMES)[t])} ${teamScore(t)}`).join(', ') : '';
     const baseText = res.mode === 'snd' && res.bases && res.bases.length ? ` · Bases: ${res.bases.map((hp, t) => `${esc((res.teamNames || TEAM_NAMES)[t])} ${hp} HP`).join(', ')}` : '';
-    $('#end-body').innerHTML = `<p class="result-title ${res.winner < 0 ? 'draw' : won ? 'win' : 'lose'}">${title}</p><p style="text-align:center" class="sub">${esc(winnerText)} · ${GAMEMODES.find(m => m.id === res.mode).name}${res.night ? ' · Night' : ''}${baseText}${scoreText}</p>
+    $('#end-body').innerHTML = `<p class="result-title ${res.winner < 0 ? 'draw' : won ? 'win' : 'lose'}">${title}</p><p style="text-align:center" class="sub">${esc(winnerText)} · ${GAMEMODES.find(m => m.id === res.mode).name}${res.night ? ' · Night' : ''}${baseText}${scoreText}${(cfg.mods || []).length ? ' · ' + esc(modsText(cfg)) : ''}</p>
       <h3>Rewards</h3><div class="rewards">${R.map(([l, x, c]) => `<div><span>${esc(l)}</span><span>${x ? '+' + fmt(x) + ' XP' : ''} ${c ? '+¢' + fmt(c) : ''}</span></div>`).join('')}
         <div class="tot"><span>Total</span><span>+${fmt(xp)} XP · +¢${fmt(coins)}</span></div></div>
       <h3>Scoreboard</h3><table class="sb"><tr><th>PLAYER</th>${res.ffa ? '' : '<th>TEAM</th>'}<th>K</th><th>D</th><th>A</th>${res.mode === 'zone' && res.ffa ? '<th>ZONE</th>' : ''}${res.mode === 'score' ? '<th>SCORE</th>' : ''}</tr>
@@ -772,7 +844,7 @@ const UI = (() => {
   $('#mp-host').onclick = () => {
     Sfx.ui(); setStatus('Creating game...');
     Net.host(code => {
-      lobby = { code, format: 'team', teams: 2, size: 2, ffaCount: 8, ff: false, night: false, massive: false, lives: 1, minutes: 5, teamNames: TEAM_NAMES.slice(), players: [Object.assign(meParticipant('H', 0), { ready: true })], votesMap: { H: 'oldtown' }, votesMode: { H: 'deathmatch' }, inGame: false };
+      lobby = { code, format: 'team', teams: 2, size: 2, ffaCount: 8, ff: false, night: false, massive: false, lives: 1, minutes: 5, mods: [], teamNames: TEAM_NAMES.slice(), players: [Object.assign(meParticipant('H', 0), { ready: true })], votesMap: { H: 'oldtown' }, votesMode: { H: 'deathmatch' }, inGame: false };
       setStatus(''); go('lobby'); renderLobby();
     });
   };
@@ -874,7 +946,7 @@ const UI = (() => {
         <button id="copy-code">Copy</button><span class="sub">${host ? 'Share this code with friends so they can join.' : 'Waiting for the host to start.'}</span>
         <button class="back" id="lobby-leave" style="margin-left:auto">Leave</button></div>
       <div class="lobby-grid"><div>
-        ${host ? `<div id="lobby-settings">${matchSettingsHTML(lobby, true)}</div>` : `<h3>Match</h3><p>${lobby.massive ? '⚔ Massive battle · ' : ''}${lobby.format === 'ffa' ? `Free For All · up to ${lobby.ffaCount} players` : `${lobby.teams} teams of ${lobby.size}`} · Friendly fire ${lobby.format === 'ffa' ? 'n/a' : lobby.ff ? 'ON' : 'OFF'}${lobby.night ? ' · 🌙 Night' : ''}</p>`}
+        ${host ? `<div id="lobby-settings">${matchSettingsHTML(lobby, true)}</div>` : `<h3>Match</h3><p>${lobby.massive ? '⚔ Massive battle · ' : ''}${lobby.format === 'ffa' ? `Free For All · up to ${lobby.ffaCount} players` : `${lobby.teams} teams of ${lobby.size}`} · Friendly fire ${lobby.format === 'ffa' ? 'n/a' : lobby.ff ? 'ON' : 'OFF'}${lobby.night ? ' · 🌙 Night' : ''}${(lobby.mods || []).length ? '<br>Modifiers: ' + esc(modsText(lobby)) : ''}</p>`}
         <h3>Players</h3>${teamsHTML}
         ${host ? `<div class="row"><button id="fill-bots" ${lobby.players.length >= cap ? 'disabled' : ''}>Fill empty slots with bots</button></div>` : ''}
       </div><div>
@@ -942,14 +1014,33 @@ const UI = (() => {
     const spec = mapSpec(mapId, lobby.savedMaps || []);
     const ffa = lobby.format === 'ffa';
     const parts = lobby.players.map((p, i) => ({ id: p.id, name: p.name, team: ffa ? i : p.team, isBot: p.isBot, isRemote: !p.isBot && p.id !== 'H', loadout: p.loadout, skins: p.skins, uniform: p.uniform, face: p.isBot ? null : p.face || null }));
-    const cfg = { mapId: spec.mapId, seed: spec.custom ? spec.seed : Math.floor(Math.random() * 1e9), customMap: spec.custom, mapName: spec.name, mode, ffa, friendlyFire: lobby.ff, night: !!lobby.night, lives: lobby.lives || 1, minutes: lobby.minutes || 5, teams: ffa ? 0 : lobby.teams, massive: !!lobby.massive, teamNames: lobby.teamNames.slice(), participants: parts };
+    const cfg = { mapId: spec.mapId, seed: spec.custom ? spec.seed : Math.floor(Math.random() * 1e9), customMap: spec.custom, mapName: spec.name, mode, ffa, friendlyFire: lobby.ff, night: !!lobby.night, lives: lobby.lives || 1, minutes: lobby.minutes || 5, mods: (lobby.mods || []).slice(), teams: ffa ? 0 : lobby.teams, massive: !!lobby.massive, teamNames: lobby.teamNames.slice(), participants: parts };
     lobby.inGame = true; broadcastLobby();
     Net.broadcast({ t: 'start', cfg });
     launch(Object.assign({}, cfg, { role: 'host', localId: 'H', net: Net }));
   }
 
   // ------------------------------------------------------------------ settings
-  $('#btn-settings').onclick = () => { $('#vol').value = Sfx.getVolume(); $('#settings').classList.remove('hidden'); };
+  // ---- keybinds editor
+  let rebinding = null;
+  function renderKeybinds() {
+    $('#keybinds').innerHTML = Keybinds.ACTIONS.map(([id, name]) => `<div class="kb"><span>${esc(name)}</span><button data-bind="${id}" class="${rebinding === id ? 'sel waiting' : ''}">${rebinding === id ? 'Press a key…' : esc(Keybinds.label(Keybinds.get(id)))}</button></div>`).join('');
+    $('#keybinds').querySelectorAll('[data-bind]').forEach(b => b.onclick = () => { rebinding = b.dataset.bind; renderKeybinds(); });
+    updateControlsHint();
+  }
+  window.addEventListener('keydown', e => {
+    if (!rebinding) return;
+    e.preventDefault(); e.stopPropagation();
+    if (e.code !== 'Escape') { const was = Keybinds.ACTIONS.map(([id]) => Keybinds.get(id)); Keybinds.set(rebinding, e.code); const moved = Keybinds.ACTIONS.filter(([id], i) => id !== rebinding && Keybinds.get(id) !== was[i]); if (moved.length) toast(`Swapped: ${moved.map(a => a[1]).join(', ')} now uses ${Keybinds.label(Keybinds.get(moved[0][0]))}`); }
+    rebinding = null; renderKeybinds();
+  }, true);
+  $('#btn-keys-reset').onclick = () => { Keybinds.reset(); rebinding = null; renderKeybinds(); toast('Controls reset to default'); };
+  function updateControlsHint() {
+    const k = id => Keybinds.label(Keybinds.get(id)), h = document.querySelector('.controls-hint'); if (!h) return;
+    h.textContent = `Click to capture the mouse · ${k('forward')}${k('left')}${k('back')}${k('right')} move · ${k('sprint')} sprint · ${k('jump')} jump · ${k('crouch')} crouch (hold: prone) · Mouse look · LMB fire · RMB aim/scope (${k('hold')} hold breath) · ${k('reload')} reload · ${k('w1')}-${k('w4')} weapons · ${k('melee')} melee · ${k('u1')}-${k('u3')} utilities (or ${k('unext')} select, ${k('uuse')} use) · ${k('light')} weapon light · ${k('gear')} night gear · ${k('scores')} scores · Esc menu`;
+  }
+  updateControlsHint();
+  $('#btn-settings').onclick = () => { $('#vol').value = Sfx.getVolume(); rebinding = null; renderKeybinds(); $('#settings').classList.remove('hidden'); };
   $('#btn-close-settings').onclick = () => $('#settings').classList.add('hidden');
   $('#btn-pause-settings').onclick = () => $('#btn-settings').click();
   try { $('#quality').value = localStorage.getItem('fo3d-quality') || 'high'; } catch (e) {}

@@ -49,13 +49,14 @@ class Heap {
 // storey a point is on (0 = ground, 1 = first floor...), measured from the ground under it
 function floorLevel(m, x, y, z) {
   const tx = Math.max(0, Math.min(m.w - 1, Math.floor(x / T))), ty = Math.max(0, Math.min(m.h - 1, Math.floor(y / T)));
-  return Math.max(0, Math.min(4, Math.round(((z || 0) - (m.base ? m.base[ty * m.w + tx] : 0)) / SH)));
+  return Math.max(0, Math.min(4, Math.round(((z || 0) - (m.base ? m.base[ty * m.w + tx] : 0)) / (m.sh ? m.sh[ty * m.w + tx] : SH))));
 }
 // path between two points, possibly on different floors: walk to a staircase, climb (or descend) it one storey at a time
 function planPath(g, u, goal) {
   const m = g.map, c = i => ({ x: (i % m.w) * T + T / 2, y: ((i / m.w) | 0) * T + T / 2 });
   let lu = floorLevel(m, u.x, u.y, u.z), lg = floorLevel(m, goal.x, goal.y, goal.z);
-  if (lu === lg || !m.stairs.length) return findPath(g, u.x, u.y, goal.x, goal.y, 7000, lu);
+  const seed = u.ai ? u.ai.routeSeed || 0 : 0;
+  if (lu === lg || !m.stairs.length) return findPath(g, u.x, u.y, goal.x, goal.y, 7000, lu, seed);
   const out = []; let cx = u.x, cy = u.y;
   for (let guard = 0; lu !== lg && guard < 5; guard++) {
     const up = lg > lu, lvl = up ? lu : lu - 1;
@@ -68,15 +69,17 @@ function planPath(g, u, goal) {
     }
     if (!best) break;
     const from = c(up ? best.approach : best.landing), to = c(up ? best.landing : best.approach), steps = best.tiles.map(c);
-    out.push(...(findPath(g, cx, cy, from.x, from.y, 7000, lu) || []), from, ...(up ? steps : steps.slice().reverse()), to);
+    out.push(...(findPath(g, cx, cy, from.x, from.y, 7000, lu, seed) || []), from, ...(up ? steps : steps.slice().reverse()), to);
     cx = to.x; cy = to.y; lu += up ? 1 : -1;
   }
-  out.push(...(findPath(g, cx, cy, goal.x, goal.y, 7000, lu) || []));
+  out.push(...(findPath(g, cx, cy, goal.x, goal.y, 7000, lu, seed) || []));
   return out;
 }
 
 // level 0 = ground, 1+ = upper floors of buildings
-function findPath(game, sx, sy, gx, gy, maxNodes, level) {
+// seed: each bot has its own route preferences (a random cost bias over the map), so bots heading to the same
+// place spread over different streets and corridors instead of all taking the single shortest path
+function findPath(game, sx, sy, gx, gy, maxNodes, level, seed) {
   const m = game.map, W = m.w, H = m.h;
   const s = Math.floor(sy / T) * W + Math.floor(sx / T);
   let goal = Math.floor(gy / T) * W + Math.floor(gx / T);
@@ -95,6 +98,8 @@ function findPath(game, sx, sy, gx, gy, maxNodes, level) {
   const gxT = goal % W, gyT = (goal / W) | 0;
   let n = 0;
   maxNodes = Math.max(maxNodes || 6000, (W * H * 0.35) | 0);
+  // burning ground (on the ground floor) costs a lot: paths go around fires
+  const hot = new Set(); if (!level) for (const f of game.fires || []) { const r = Math.ceil((f.r + 24) / T), fx = Math.floor(f.x / T), fy = Math.floor(f.y / T); for (let y = fy - r; y <= fy + r; y++) for (let x = fx - r; x <= fx + r; x++) if (x >= 0 && y >= 0 && x < W && y < H && Math.hypot((x + 0.5) * T - f.x, (y + 0.5) * T - f.y) < f.r + 24) hot.add(y * W + x); }
   while (heap.size && n++ < maxNodes) {
     const c = heap.pop(); if (c === goal) break; if (closed[c]) continue; closed[c] = 1;
     const cx = c % W, cy = (c / W) | 0;
@@ -104,8 +109,10 @@ function findPath(game, sx, sy, gx, gy, maxNodes, level) {
       if (dx && dy && (!walk(cy * W + nx) || !walk(ny * W + cx))) continue; // no corner cutting
       let cost = dx && dy ? 1.414 : 1;
       const o = m.obj[ni]; if (o && MAT[o].slow) cost *= 1.2; if (o === O.BROKENWIN) cost *= 4; // climbing through a window is slow: prefer doors
+      if (hot.size && hot.has(ni)) cost *= 30;
+      if (seed) cost *= 0.85 + hash2(nx >> 2, ny >> 2, seed) * 0.75;
       const ng = g[c] + cost;
-      if (ng < g[ni]) { g[ni] = ng; came[ni] = c; heap.push(ni, ng + Math.hypot(nx - gxT, ny - gyT)); }
+      if (ng < g[ni]) { g[ni] = ng; came[ni] = c; heap.push(ni, ng + Math.hypot(nx - gxT, ny - gyT) * (seed ? 0.85 : 1)); }
     }
   }
   if (came[goal] < 0 && goal !== s) return null;
@@ -126,6 +133,7 @@ class BotBrain {
     this.strafe = Math.random() < 0.5 ? 1 : -1; this.strafeT = 0; this.react = 0; this.perceiveT = 0;
     this.aimOff = 0; this.nadeCd = 3 + Math.random() * 4; this.stuckT = 0; this.lastPos = { x: this.u.x, y: this.u.y }; this.detour = null;
     this.burstT = 0; this.pauseT = 0; this.stance = 'stand'; this.stanceT = 0; this.jumpT = 0;
+    this.routeSeed = 1 + Math.floor(Math.random() * 1e6); this.via = null;
   }
   weapon() { return ITEMS[this.u.slots[this.u.slot]]; }
   prefRange(it) {
@@ -212,8 +220,9 @@ class BotBrain {
       if (it && it.explosive && d < 140 && u.slots[1]) inp.slot = 1;
       if (it && it.cat === 'melee' && d > 120) { const s = [0, 1, 2].find(s => u.slots[s] && u.mag[s] > 0); if (s !== undefined) inp.slot = s; }
       // aim with lead + error
-      const bs = it && it.speed ? it.speed : 2000;
-      const lead = Math.min(0.6, d / bs);
+      const bal = it && !it.flame && !it.explosive && it.cat !== 'melee' ? ballistics(it) : null, slow = g.mods.has('slowbullets') ? SLOW_BULLETS : 1;
+      const bs = bal ? bal.v * slow * Math.exp(-bal.k * d * 0.5) : it && it.speed ? it.speed : 2000;
+      const lead = Math.min(2.5, d / bs);
       const tvx = t.velX || 0, tvy = t.velY || 0;
       let ax = t.x + tvx * lead * 0.8, ay = t.y + tvy * lead * 0.8;
       this.aimOff += (Math.random() - 0.5) * dt * 4; this.aimOff *= 0.96;
@@ -222,8 +231,9 @@ class BotBrain {
       inp.ax = u.x + Math.cos(ang) * d; inp.ay = u.y + Math.sin(ang) * d;
       if (it && it.lob) { inp.ax = t.x; inp.ay = t.y; }
       // vertical aim at the chest (good shots sometimes go for the head)
-      const aimZ = t.z + STANCES[t.stance || 'stand'].h * (Math.random() < 0.15 * this.skill ? 0.9 : 0.62);
-      inp.pitch = Math.atan2(aimZ - eyeZ(u), d) + this.aimOff * err;
+      const aimZ = t.z + STANCES[t.stance || 'stand'].h * (g.mods.has('headonly') || Math.random() < 0.15 * this.skill ? 0.9 : 0.62);
+      // aim a little high at long range to allow for bullet drop
+      inp.pitch = Math.atan2(aimZ - eyeZ(u), d) + this.aimOff * err + (bal ? GRAVITY_PX * g.gravMul * slow * slow * d / (2 * bs * bs) : 0);
       // fire control
       let da = ang - u.angle; da = Math.atan2(Math.sin(da), Math.cos(da));
       const inRange = it && (it.cat === 'melee' ? d < it.reach + 14 : d < (it.range || 600) * 0.95);
@@ -317,10 +327,25 @@ class BotBrain {
   finishMove(inp, moveTo, t, dt) {
     const g = this.g, u = this.u;
     if (moveTo) {
-      if (!this.path || this.pathT <= 0 || (this.pathGoal && this.pathT < 0.9 && Math.hypot(this.pathGoal.x - moveTo.x, this.pathGoal.y - moveTo.y) > 200)) {
-        this.path = planPath(g, u, moveTo) || []; this.pathT = (this.path.length ? 1.2 : 2.5) + Math.random() * 0.6; this.pathGoal = { x: moveTo.x, y: moveTo.y }; this.pathFor = moveTo.combat ? 'combat' : 'move';
+      // a new destination: new route preferences, and on long trips now and then a detour to come in from the side
+      const fresh = !this.dest || Math.hypot(this.dest.x - moveTo.x, this.dest.y - moveTo.y) > 160;
+      if (fresh) {
+        this.dest = { x: moveTo.x, y: moveTo.y }; this.routeSeed = 1 + Math.floor(Math.random() * 1e6); this.via = null;
+        const dd = Math.hypot(moveTo.x - u.x, moveTo.y - u.y);
+        if (!moveTo.combat && dd > 22 * T && Math.random() < 0.4) {
+          const a = Math.atan2(moveTo.y - u.y, moveTo.x - u.x) + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2, off = (6 + Math.random() * 9) * T;
+          const vx = (u.x + moveTo.x) / 2 + Math.cos(a) * off, vy = (u.y + moveTo.y) / 2 + Math.sin(a) * off, vi = g.tileAt(vx, vy);
+          if (vi >= 0 && !g.solidTile(vi % g.map.w, (vi / g.map.w) | 0) && !g.steepTile(vi % g.map.w, (vi / g.map.w) | 0)) this.via = { x: vx, y: vy, z: g.groundAt(vx, vy) };
+        }
+        this.path = null;
+      }
+      if (this.via && (moveTo.combat || Math.hypot(this.via.x - u.x, this.via.y - u.y) < 48)) { this.via = null; this.path = null; }
+      const goTo = this.via || moveTo;
+      if (!this.path || this.pathT <= 0 || (this.pathGoal && this.pathT < 0.9 && Math.hypot(this.pathGoal.x - goTo.x, this.pathGoal.y - goTo.y) > 200)) {
+        this.path = planPath(g, u, goTo) || []; this.pathT = (this.path.length ? 1.2 : 2.5) + Math.random() * 0.6; this.pathGoal = { x: goTo.x, y: goTo.y }; this.pathFor = moveTo.combat ? 'combat' : 'move';
         // unreachable: give up on that spot rather than walking into the wall in front of it
-        if (!this.path.length && Math.hypot(moveTo.x - u.x, moveTo.y - u.y) > 60 && !g.los(u.x, u.y, moveTo.x, moveTo.y, true, false, eyeZ(u), eyeZ(u))) {
+        if (!this.path.length && goTo === this.via) { this.via = null; this.pathT = 0; }
+        else if (!this.path.length && Math.hypot(moveTo.x - u.x, moveTo.y - u.y) > 60 && !g.los(u.x, u.y, moveTo.x, moveTo.y, true, false, eyeZ(u), eyeZ(u))) {
           if (moveTo === this.goal) this.goal = null;
           if (moveTo === this.lastSeen) this.lastSeen = null;
           this.noPath = true;
@@ -347,9 +372,16 @@ class BotBrain {
     if (this.windowT > 0) { this.windowT -= dt; inp.stance = 'crouch'; } // duck through window openings
     if (this.jumpT > 0) { this.jumpT -= dt; inp.jump = true; if (!(this.windowT > 0)) inp.stance = 'stand'; }
     // avoid standing in fire
-    for (const f of g.fires) { const d = Math.hypot(u.x - f.x, u.y - f.y); if (d < f.r + 20) { const a = Math.atan2(u.y - f.y, u.x - f.x); inp.mx = Math.cos(a); inp.my = Math.sin(a); } }
+    // standing in fire: step out and keep going that way for a moment, then re-plan around it (instead of the path
+    // pulling straight back in every other frame)
+    for (const f of g.fires) { const d = Math.hypot(u.x - f.x, u.y - f.y); if (d < f.r + 20 && !(this.flee && this.flee.t > 0)) { this.flee = { a: Math.atan2(u.y - f.y, u.x - f.x), t: 0.5 }; this.path = null; this.pathT = 0; } }
+    if (this.flee && this.flee.t > 0) { this.flee.t -= dt; inp.mx = Math.cos(this.flee.a); inp.my = Math.sin(this.flee.a); }
     // flee from grenades
-    for (const n of g.nades) { if (n.kind !== 'frag' && n.kind !== 'c4' && n.kind !== 'satchel') continue; if (n.kind === 'c4' && n.team === u.team) continue; const d = Math.hypot(u.x - n.x, u.y - n.y); if (d < 160) { const a = Math.atan2(u.y - n.y, u.x - n.x); inp.mx = Math.cos(a); inp.my = Math.sin(a); } }
+    // flee from grenades: once running from one, keep going until well clear of it (not just back across the edge of its
+    // blast, where the path would pull straight back in)
+    if (this.nadeRun && (!g.nades.includes(this.nadeRun) || Math.hypot(u.x - this.nadeRun.x, u.y - this.nadeRun.y) > 230)) this.nadeRun = null;
+    if (!this.nadeRun) for (const n of g.nades) { if (n.kind !== 'frag' && n.kind !== 'c4' && n.kind !== 'satchel') continue; if (n.kind === 'c4' && n.team === u.team) continue; if (Math.hypot(u.x - n.x, u.y - n.y) < 160) { this.nadeRun = n; this.path = null; this.pathT = 0; break; } }
+    if (this.nadeRun) { const n = this.nadeRun, a = Math.atan2(u.y - n.y, u.x - n.x); inp.mx = Math.cos(a); inp.my = Math.sin(a); }
     return inp;
   }
 }

@@ -36,11 +36,12 @@ try {
   await C.ev(`document.querySelector('[data-vmap="sm_test1"]').click(); document.querySelector('[data-vmode="score"]').click(); document.querySelector('#ready').click()`); await sleep(600);
   await H.ev(`document.querySelector('[data-vmap="sm_test1"]').click(); document.querySelector('[data-vmode="score"]').click()`); await sleep(500);
   await H.ev(`(() => { const r = document.querySelector('[data-minutes]'); if (r) { r.value = 3; r.oninput(); r.onchange(); } })()`); await sleep(500);
+  await H.ev(`document.querySelector('[data-mod="dhp"]').click()`); await sleep(300); await H.ev(`document.querySelector('[data-mod="lowgrav"]').click()`); await sleep(500);
   await H.ev(`document.querySelector('#fill-bots').click()`); await sleep(800);
   await H.shot('mp4-host-lobby'); await C.shot('mp4-client-lobby');
   await H.ev(`document.querySelector('#lobby-start').click()`);
   await sleep(6000);
-  const st = `JSON.stringify(UI.game ? { role: UI.game.role, map: UI.game.map.id, theme: UI.game.map.genOpts && UI.game.map.genOpts.theme, w: UI.game.map.w, objHash: UI.game.map.obj.reduce((s, v, i) => (s + v * (i % 97 + 1)) % 1000003, 0), mode: UI.game.cfg.mode, limit: UI.game.timeLimit, faces: UI.game.units.map(u => u.name + ':' + (u.face ? u.face.length : 0)).join(',') } : 'nogame')`;
+  const st = `JSON.stringify(UI.game ? { role: UI.game.role, map: UI.game.map.id, theme: UI.game.map.genOpts && UI.game.map.genOpts.theme, w: UI.game.map.w, objHash: UI.game.map.obj.reduce((s, v, i) => (s + v * (i % 97 + 1)) % 1000003, 0), mode: UI.game.cfg.mode, limit: UI.game.timeLimit, mods: [...UI.game.mods].join('+'), maxHp: UI.game.maxHp, faces: UI.game.units.map(u => u.name + ':' + (u.face ? u.face.length : 0)).join(',') } : 'nogame')`;
   console.log('host', await H.ev(st)); console.log('client', await C.ev(st));
   await sleep(4000);
   await H.shot('mp4-host-game'); await C.shot('mp4-client-game');
