@@ -303,7 +303,10 @@ const UI = (() => {
     });
     $('#l-list').innerHTML = h;
     const isFace = lSel === 'face';
-    $('#l-side').classList.toggle('hidden', isFace); $('#l-face').classList.toggle('hidden', !isFace);
+    // weapons and armour show their real photo (as in the shop and weapons menu); the uniform is drawn
+    const photo = !isFace && lSel !== 'uniform';
+    $('#l-side').classList.toggle('hidden', isFace || photo); $('#l-face').classList.toggle('hidden', !isFace); $('#l-photo').classList.toggle('hidden', !photo);
+    if (photo) { const im = $('#l-photo img'); im.src = Art.itemImage(lSel); im.alt = ITEMS[lSel].name; }
     if (isFace) { $('#l-name').textContent = 'Face paint'; renderFaceTools(); drawLockerPreview(); return; }
     const isU = lSel === 'uniform', list = isU ? UNIFORMS : CAMOS, store = isU ? P.ownedUniforms : P.ownedCamos;
     const cur = isU ? P.uniform : (P.skins[lSel] || (ITEMS[lSel].cat === 'armor' ? 'olive' : 'factory'));
@@ -427,7 +430,7 @@ const UI = (() => {
       sg.fillStyle = sg.createPattern(Art.camoCanvas(c.colors, 'uniform', 64, c.id.length * 31), 'repeat');
       sg.beginPath(); sg.moveTo(220, 30); sg.lineTo(420, 30); sg.lineTo(500, 90); sg.lineTo(470, 130); sg.lineTo(430, 100); sg.lineTo(420, 260); sg.lineTo(220, 260); sg.lineTo(210, 100); sg.lineTo(170, 130); sg.lineTo(140, 90); sg.closePath(); sg.fill();
       sg.strokeStyle = 'rgba(0,0,0,0.5)'; sg.lineWidth = 2; sg.stroke();
-    } else Art.drawWeaponSide(sg, ITEMS[lSel], P.skins[lSel] || (ITEMS[lSel].cat === 'armor' ? 'olive' : 'factory'), side.width, side.height);
+    }
   }
   $('#l-list').addEventListener('click', e => { const b = e.target.closest('[data-l]'); if (b) { lSel = b.dataset.l; Sfx.ui(); renderLocker(); } });
   $('#l-camos').addEventListener('click', e => {

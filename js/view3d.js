@@ -3,6 +3,13 @@
 // with three.js. Simulation x/y map to three.js x/z; 1 unit = 1 px (32 = a tile).
 // ============================================================================
 const EYE = 52, WALL_H = 84, MUZZLE_H = 44, VM_SCALE = 0.8;
+// first-person melee: how each kind of weapon sits in the hand (turned on its own axis, then pitched up, yawed left, leaned left), where the hand is on
+// screen (x right, y up, z back) and its swing: wind-up, strike (pitch down, sweep left, lean, move) and recovery
+const MELEE_HOLD = {
+  knife: { tw: 0, rx: 0.3, ry: 0.22, rz: 0.05, x: 3.4, y: -3.6, z: -8.5, pitch: 0.25, yaw: 0.75, roll: 0.2, mx: -2.5, my: 0.6, mz: -4.5 },
+  one: { tw: 0.5, rx: 0.8, ry: 0.1, rz: 0.3, x: 4.6, y: -5.0, z: -10.0, pitch: -1.3, yaw: 0.45, roll: -0.3, mx: -3.2, my: -0.8, mz: -2.5 },
+  two: { tw: 0.9, rx: 0.62, ry: 0.05, rz: 0.4, x: 5.2, y: -6.6, z: -12.5, pitch: -1.1, yaw: 0.3, roll: -0.45, mx: -3.5, my: 0.5, mz: -3.0 },
+};
 // window sills and frames per wall material
 const TRIM = { [O.BRICK]: 0xd6cfc0, [O.CONCRETE]: 0x9c998f, [O.STUCCO]: 0xf1ede2, [O.WHITEWOOD]: 0xf5f5f0, [O.WOODWALL]: 0x4a3524, [O.BARNWALL]: 0xece6d4,
   [O.FIELDSTONE]: 0x6e5236, [O.MUDBRICK]: 0x6a5030, [O.METALWALL]: 0x5d6266, [O.RUIN]: 0x787160, [O.PLYWOOD]: 0x8a6a40 };
@@ -777,12 +784,24 @@ class View3D {
     if (it.id === 'fists') { box(2.2, 2.2, 3, skinM, -1.5, 0, -3); box(2.2, 2.2, 3, skinM, 3, 0.3, -2); box(2.6, 2.6, 8, sleeve, -1.5, -0.5, 2); box(2.6, 2.6, 8, sleeve, 3, -0.2, 3); g.userData.tip = new THREE.Vector3(0, 0, -6); return g; }
     // the hands: the firing hand on the grip and the support hand, each a group the animations move; each sleeve is
     // aimed back at its shoulder wherever its hand goes
-    const mkHand = (name, w, h, d, armW, x, y, z, sx, sy, sz) => {
-      const hg = new THREE.Group(); hg.name = name; hg.position.set(x, y, z); g.add(hg);
+    const mkHand = (name, w, h, d, armW, x, y, z, sx, sy, sz, host) => {
+      const hg = new THREE.Group(); hg.name = name; hg.position.set(x, y, z); (host || g).add(hg);
       hg.add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), skinM));
       const arm = new THREE.Mesh(new THREE.BoxGeometry(armW, armW, 10), sleeve); arm.name = 'vmArm'; hg.add(arm);
       hg.userData.rest = hg.position.clone(); hg.userData.shoulder = hg.position.clone().add(new THREE.Vector3(sx, sy, sz)); return hg;
     };
+    // melee weapons are held the way the real ones are: a knife point forward in the fist, a one-handed weapon (club,
+    // machete, shovel) raised ready to chop, a two-handed one (axe, sledgehammer, katana) up across the body in both
+    // hands, the second hand further along the handle. The weapon sits tilted in a holder; the hands stay upright
+    if (it.cat === 'melee' && g.userData.melee) {
+      const mu = g.userData.melee, out = new THREE.Group(), hold = new THREE.Group(), H = MELEE_HOLD[mu.hold] || MELEE_HOLD.knife;
+      g.rotation.z = H.tw; hold.add(g); hold.rotation.set(H.rx, H.ry, H.rz, 'ZYX'); out.add(hold); hold.updateMatrix();
+      mkHand('vmGrip', 2.2, 2.4, 2.6, 2.8, 0, 0, 0.2, 3, -6, 8, out);
+      const p2 = new THREE.Vector3(0, 0, -mu.hand2).applyMatrix4(hold.matrix);
+      const hand = mkHand('vmHand', 2.1, 2.3, 2.5, 2.2, p2.x, p2.y, p2.z, -9 - p2.x, -12 - p2.y, 3 - p2.z, out); hand.visible = hand.userData.idle = mu.hold === 'two';
+      out.scale.setScalar(VM_SCALE); out.userData = { tip: new THREE.Vector3(0, 0, -6), sightY: 1.6 * VM_SCALE, melee: mu, vmPush: 0 };
+      return out;
+    }
     mkHand('vmGrip', 2.2, 2.4, 2.6, 2.8, 0.2, -2.6, -0.5, 0.8, -1.6, 10);
     const long = it.cat === 'primary' || it.type === 'Submachine Gun';
     const hz = !long ? 1.5 : it.type === 'Rocket Launcher' ? -L * 0.32 : -(g.userData.foreDist || L * 0.6), hy = !long ? -5 : (g.userData.foreY === undefined ? -0.4 : g.userData.foreY) - 0.9;
@@ -826,8 +845,20 @@ class View3D {
     // [pitch, yaw, roll, right, up, back]: each kind of reload holds the gun so the loading happens in view
     const pose = this.reloadPose(R, reload, vm.rlEmpty), cr = R.manual === 'bolt' ? 0.9 : 0.08, cy = R.manual === 'bolt' ? 0.45 : 0;
     const cb = R.manual === 'bolt' ? ce : ce * 0.3; // working a bolt: the rifle comes out a little so the hand on it doesn't fill the view
-    this.vmRoot.position.set(x + rl * (pose[3] + 1.1) - cb * 2.2, y + rl * pose[4] + cb * 1.2, -8.5 - (vm.model.userData.vmPush || 0) + vm.kick * 1.4 * (1 - 0.5 * vm.ads) - rl * pose[5] - cb * 5);
-    this.vmRoot.rotation.set(vm.kick * 0.1 + rl * pose[0] + ce * 0.06 + (swing ? Math.sin(swing * Math.PI) * 0.5 : 0), (swing ? -Math.sin(swing * Math.PI) * 0.8 : 0) + Math.sin(w * 0.5) * 0.01 * bobA + rl * pose[1] + ce * cy, rl * pose[2] + ce * cr);
+    const mh = vm.model.userData.melee && MELEE_HOLD[vm.model.userData.melee.hold];
+    if (mh) {
+      // a quick wind-up, the blow, then back to the ready position (k < 0 winding up, 1 at the end of the blow)
+      const k = !swing ? 0 : swing < 0.22 ? -0.3 * ramp(swing / 0.22) : swing < 0.5 ? -0.3 + 1.3 * ramp((swing - 0.22) / 0.28) : 1 - ramp((swing - 0.5) / 0.5);
+      const bx = Math.sin(w) * 0.35 * bobA, by = Math.abs(Math.cos(w)) * 0.3 * bobA - vm.swap * 6;
+      this.vmRoot.position.set(mh.x + bx + mh.mx * k, mh.y + by + mh.my * k, mh.z + mh.mz * k);
+      this.vmRoot.rotation.set(mh.pitch * k, mh.yaw * k + Math.sin(w * 0.5) * 0.01 * bobA, mh.roll * k);
+      // the shoulders stay put below the camera while the arms swing the weapon
+      this.vmRoot.updateMatrixWorld(true);
+      for (const [n, sx] of [['vmGrip', 7], ['vmHand', -7]]) { const h = vm.model.getObjectByName(n); if (h) h.userData.shoulder = vm.model.worldToLocal(new THREE.Vector3(sx, -13, 2)); }
+    } else {
+      this.vmRoot.position.set(x + rl * (pose[3] + 1.1) - cb * 2.2, y + rl * pose[4] + cb * 1.2, -8.5 - (vm.model.userData.vmPush || 0) + vm.kick * 1.4 * (1 - 0.5 * vm.ads) - rl * pose[5] - cb * 5);
+      this.vmRoot.rotation.set(vm.kick * 0.1 + rl * pose[0] + ce * 0.06 + (swing ? Math.sin(swing * Math.PI) * 0.5 : 0), (swing ? -Math.sin(swing * Math.PI) * 0.8 : 0) + Math.sin(w * 0.5) * 0.01 * bobA + rl * pose[1] + ce * cy, rl * pose[2] + ce * cr);
+    }
     this.vmRoot.updateMatrixWorld(true);
     this.animateReload(R, reload, { n: vm.rlN || 1, empty: !!vm.rlEmpty, cyc, kick: vm.kick, dry: left <= 0 && it.mag > 0, ammo: left, shots: vm.shots || 0, sinceShot: vm.shotT === undefined ? 9 : G.time - vm.shotT, rpm: (ws && ws.rpm) || it.rpm || 600 });
     if (R.manual && R.ej) {

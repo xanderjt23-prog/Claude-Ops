@@ -114,8 +114,18 @@ const Soldier3D = (() => {
     if (st === 'dead') { hands = [V(1, -1, -16), V(2, -1, 16)]; gun.visible = false; }
     else if (!it || it.id === 'fists') { hands = [V(11, -1, -3.5), V(10, 0, 3.5)]; gun.visible = false; }
     else if (it.cat === 'melee') {
-      gun.visible = true; gun.position.set(10, -3, 4); gun.rotation.set(0, -Math.PI / 2, -0.5 + (p.swing ? Math.sin(p.swing * Math.PI) * 1.2 : 0), 'ZYX');
-      hands = [V(3, -12, -8.5), V(10, -3, 4)];
+      // two-handed weapons (axe, sledgehammer, katana) are held up across the body in both hands and chop down;
+      // the rest in the right hand
+      const mu = gun.children[0] && gun.children[0].userData.melee, sw = p.swing ? Math.sin(p.swing * Math.PI) : 0;
+      gun.visible = true;
+      if (mu && mu.hold === 'two') {
+        const a = 0.95 - sw * 1.7, d = mu.hand2 * 1.15;
+        gun.position.set(9, -4, 2.5); gun.rotation.set(0, -Math.PI / 2, a, 'ZYX');
+        hands = [V(9 + Math.cos(a) * d, -4 + Math.sin(a) * d, 1.5), V(9, -4, 2.5)];
+      } else {
+        gun.position.set(10, -3, 4); gun.rotation.set(0, -Math.PI / 2, -0.5 + sw * 1.2, 'ZYX');
+        hands = [V(3, -12, -8.5), V(10, -3, 4)];
+      }
     } else if (it.cat === 'sidearm' && it.type !== 'Submachine Gun') {
       gun.visible = true; gun.position.set(15, -0.5, 0.5); gun.rotation.set(0, -Math.PI / 2, 0, 'ZYX');
       hands = [V(14.6, -2, -0.6), V(15, -1.6, 0.8)];

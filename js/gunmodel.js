@@ -110,6 +110,133 @@ const GunModel = (() => {
     return g;
   }
 
+  // ---- melee weapons, each modelled on its real counterpart (see the shop photos). Same model space as the guns:
+  // the (firing) hand's grip at the origin, the weapon reaching forward along -z, cutting edge / striking face down
+  // (-y). userData.melee says how it is held: hold = knife | one (one-handed chop / slash) | two (two-handed), and
+  // for two-handed weapons where the second hand goes on the handle (hand2, along the weapon: + forward, - back)
+  const steelM = () => mat('steel', () => new THREE.MeshPhongMaterial({ color: 0xb8bcc2, shininess: 120, specular: 0xffffff }));
+  const edgeM = () => mat('edge', () => new THREE.MeshPhongMaterial({ color: 0xe4e7ea, shininess: 140, specular: 0xffffff }));
+  const coatM = () => mat('coat', () => new THREE.MeshPhongMaterial({ color: 0x26272a, shininess: 35, specular: 0x444444 }));
+  const holeM = () => mat('hole', () => new THREE.MeshBasicMaterial({ color: 0x08090a }));
+  const lightWood = () => mat('lwood', () => { const c = document.createElement('canvas'); c.width = 64; c.height = 16; const g = c.getContext('2d'); g.fillStyle = '#b48a58'; g.fillRect(0, 0, 64, 16); for (let i = 0; i < 12; i++) { g.strokeStyle = `rgba(${i % 2 ? '110,70,30' : '220,180,130'},0.3)`; g.beginPath(); g.moveTo(0, Math.random() * 16); g.bezierCurveTo(20, Math.random() * 16, 44, Math.random() * 16, 64, Math.random() * 16); g.stroke(); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return new THREE.MeshPhongMaterial({ map: t, shininess: 25, specular: 0x222222 }); });
+  // a profile in the x-y plane (across the weapon) extruded along the weapon's length: shovel blades
+  function extXY(key, pts, depth) {
+    const k = 'xy' + key + ':' + depth;
+    if (!geoCache[k]) { const sh = new THREE.Shape(); pts.forEach(([x, y], i) => i ? sh.lineTo(x, y) : sh.moveTo(x, y)); sh.closePath(); const b = Math.min(0.06, depth * 0.2); const g = new THREE.ExtrudeGeometry(sh, { depth: Math.max(0.02, depth - b * 2), bevelEnabled: true, bevelSize: b, bevelThickness: b, bevelSegments: 1 }); g.translate(0, 0, -(depth - b * 2) / 2); geoCache[k] = g; }
+    return geoCache[k];
+  }
+  function buildMelee(it, o, g) {
+    const add = (geo, m, x, y, z, rx, ry, rz) => { const me = new THREE.Mesh(geo, m); me.position.set(x || 0, y || 0, z || 0); if (rx || ry || rz) me.rotation.set(rx || 0, ry || 0, rz || 0); g.add(me); return me; };
+    const P = u => -u, blade = o.camo || null;
+    // a round handle along the weapon from u0 to u1 (radius r0 at u0, r1 at u1), and a ring round it at u
+    const rod = (u0, u1, r0, r1, m, seg) => add(cyl(r1, r0, u1 - u0, seg || 12), m, 0, 0, P((u0 + u1) / 2));
+    const ring = (u, r, len, m) => add(cyl(r, r, len, 14), m, 0, 0, P(u));
+    const sideHole = (r, l, y, u) => add(cyl(r, r, l, 10).clone().rotateY(Math.PI / 2), holeM(), 0, y, P(u));
+    const melee = { hold: 'one', hand2: 0, len: 10 };
+    switch (it.id) {
+      case 'kabar': { // USMC fighting knife: stacked leather washers, steel pommel and guard, black clip-point blade
+        const leather = mat('leather', () => new THREE.MeshLambertMaterial({ color: 0x9a5a34 })), spacer = mat('spacer', () => new THREE.MeshLambertMaterial({ color: 0x141414 }));
+        for (let u = -3.2, k = 0; u < 2.4; u += 0.62, k++) { ring(u + 0.27, k % 2 ? 0.74 : 0.78, 0.5, leather); ring(u + 0.56, 0.7, 0.1, spacer); }
+        add(cyl(0.8, 0.65, 0.7, 14), darkMetal(), 0, 0, P(-3.55)); // pommel
+        add(box(0.32, 2.7, 0.3), darkMetal(), 0, 0.05, P(2.65)); // guard
+        add(ext('kabarB', [[2.8, -0.95], [9.0, -0.95], [10.6, -0.78], [11.7, -0.4], [12.5, 0.12], [11.2, 0.36], [9.8, 0.62], [2.8, 0.62]], 0.26, 0.03), blade || coatM());
+        add(ext('kabarE', [[3.4, -0.95], [9.0, -0.95], [10.6, -0.78], [11.7, -0.4], [12.42, 0.08], [11.5, -0.18], [10.4, -0.56], [9.0, -0.72], [3.4, -0.72]], 0.3, 0.02), edgeM());
+        add(box(0.3, 0.26, 4.6), mat('fuller', () => new THREE.MeshLambertMaterial({ color: 0x111214 })), 0, 0.12, P(6.3)); // blood groove
+        melee.hold = 'knife'; melee.len = 12.5; break;
+      }
+      case 'bayonet': { // M9: olive ribbed grip, muzzle-ring guard, satin clip-point blade with a saw back
+        const od = mat('od', () => new THREE.MeshLambertMaterial({ color: 0x4f5232 }));
+        rod(-3.4, 2.2, 0.82, 0.78, od, 10); for (let u = -2.4; u < 2; u += 0.9) ring(u, 0.88, 0.32, od);
+        add(box(1.0, 1.0, 1.0), darkMetal(), 0, 0.1, P(-3.8)); // latch / pommel
+        add(box(0.34, 3.4, 0.34), od, 0, 0.55, P(2.55)); add(new THREE.TorusGeometry(0.62, 0.17, 8, 16).rotateY(Math.PI / 2), od, 0, 2.15, P(2.55)); // guard and muzzle ring
+        const pts = [[2.75, -1.0], [9.4, -1.0], [10.9, -0.75], [12.3, 0.0], [10.8, 0.28], [9.4, 0.5]];
+        for (let u = 9.0; u > 4.6; u -= 0.55) pts.push([u, 0.62], [u - 0.27, 0.86]); // saw teeth
+        pts.push([4.2, 0.62], [2.75, 0.62]);
+        add(ext('m9B', pts, 0.26, 0.03), blade || steelM());
+        add(box(0.3, 0.3, 4.2), mat('m9slot', () => new THREE.MeshLambertMaterial({ color: 0x8d9196 })), 0, 0.05, P(5.4));
+        sideHole(0.22, 0.3, 0.15, 10.6);
+        melee.hold = 'knife'; melee.len = 12.3; break;
+      }
+      case 'trenchknife': { // Mk I: bronze knuckle-duster grip with four finger rings, skull-crusher nut, double-edged blade
+        const bronze = mat('bronze', () => new THREE.MeshPhongMaterial({ color: 0x8a6a30, shininess: 70, specular: 0x665533 }));
+        add(box(0.7, 1.0, 5.4), bronze, 0, 0.15, 0); // grip
+        for (let k = 0; k < 4; k++) { add(new THREE.TorusGeometry(0.62, 0.18, 6, 14).rotateY(Math.PI / 2), bronze, 0, -0.95, P(-1.95 + k * 1.3)); add(box(0.4, 0.5, 0.5), bronze, 0, -1.75, P(-1.95 + k * 1.3)); } // finger rings, knuckle points
+        add(box(0.45, 0.4, 5.4), bronze, 0, -1.6, 0);
+        add(cyl(0.38, 0.38, 1.0, 6), bronze, 0, 0.15, P(-3.2)); // skull-crusher nut
+        add(ext('mk1guard', [[2.6, -2.0], [3.4, -0.5], [2.6, 0.7], [2.4, 0.7], [2.4, -2.0]], 0.5, 0.04), bronze); // guard with its forward spike
+        add(ext('mk1B', [[3.3, -0.6], [10.8, -0.25], [11.8, 0.1], [10.8, 0.45], [3.3, 0.8]], 0.3, 0.05), blade || mat('mk1steel', () => new THREE.MeshPhongMaterial({ color: 0x6e5a40, shininess: 80, specular: 0x887766 })));
+        add(box(0.34, 0.1, 7.2), edgeM(), 0, 0.1, P(7.0)); // the diamond section's ridge
+        melee.hold = 'knife'; melee.len = 11.8; break;
+      }
+      case 'machete': { // Gerber machete: black rubber grip, black saw-back blade with a bright edge and upswept tip
+        rod(-4.2, 3.0, 0.78, 0.68, polymer(), 10); add(cyl(0.95, 0.85, 0.5, 10), polymer(), 0, -0.05, P(-4.3));
+        add(ext('macheteGuard', [[3.0, -1.2], [5.0, -1.4], [5.4, -0.2], [5.0, 1.0], [3.0, 0.9]], 1.0, 0.1), polymer());
+        const pts = [[4.8, -1.5], [26.4, -1.5], [28.0, -1.05], [29.0, -0.2], [29.0, 0.95]];
+        for (let u = 27.0; u > 6.4; u -= 0.75) pts.push([u, 0.95], [u - 0.37, 1.32]); // saw teeth
+        pts.push([5.2, 0.95]);
+        add(ext('macheteB', pts, 0.22, 0.03), blade || coatM());
+        add(ext('macheteE', [[5.6, -1.5], [26.4, -1.5], [28.0, -1.05], [28.95, -0.25], [28.9, 0.3], [27.6, -0.6], [26.2, -1.0], [5.6, -1.0]], 0.26, 0.02), edgeM());
+        sideHole(0.22, 0.28, 0.2, 27.6);
+        melee.hold = 'one'; melee.len = 29; break;
+      }
+      case 'etool': { // pick-mattock entrenching tool: wooden handle, pointed spade blade on one side, pick on the other
+        const rust = mat('rust', () => new THREE.MeshPhongMaterial({ color: 0x6a4a32, shininess: 25, specular: 0x332211 }));
+        rod(-3.0, 25.5, 0.72, 0.8, lightWood(), 12);
+        add(cyl(1.05, 1.05, 2.4, 12), rust, 0, 0, P(25.6)); // socket
+        add(extXY('etoolSpade', [[-3.7, -1.0], [3.7, -1.0], [3.7, -6.6], [0, -9.6], [-3.7, -6.6]], 0.22), blade || rust, 0, 0, P(25.6));
+        add(box(0.5, 1.6, 1.6), rust, 0, -0.6, P(25.6));
+        add(ext('etoolPick', [[24.6, 0.6], [26.6, 0.6], [26.0, 6.8], [25.4, 7.3], [24.6, 6.6]], 0.8, 0.12), rust);
+        melee.hold = 'one'; melee.len = 27; break;
+      }
+      case 'trenchclub': { // WWI raiding club: tapered hardwood, the head bound with wire and studded with nails
+        rod(-3.0, 18.5, 0.7, 1.15, wood(), 10); rod(18.5, 21.5, 1.15, 1.5, wood(), 10); rod(21.5, 28.5, 1.55, 1.6, wood(), 10);
+        const wire = mat('wire', () => new THREE.MeshPhongMaterial({ color: 0x6b5236, shininess: 50, specular: 0x443322 }));
+        for (let u = 21.8; u < 28.0; u += 0.42) ring(u, 1.7, 0.3, wire);
+        const nailM = mat('nail', () => new THREE.MeshPhongMaterial({ color: 0x3d2c20, shininess: 40 }));
+        const nail = geoCache.nail || (geoCache.nail = new THREE.CylinderGeometry(0.13, 0.13, 1.6, 5).translate(0, 1.9, 0));
+        for (let r = 0; r < 4; r++) for (let k = 0; k < 7; k++) add(nail, nailM, 0, 0, P(22.6 + r * 1.65), 0, 0, (k + (r % 2) * 0.5) / 7 * Math.PI * 2);
+        sideHole(0.3, 1.8, 0, -2.2); // wrist cord hole
+        melee.hold = 'one'; melee.len = 28.5; break;
+      }
+      case 'axe': { // double-bit axe: long hickory handle with a swell at the knob, black head with two polished bits
+        rod(-3.4, 46.0, 0.95, 0.72, lightWood(), 12); add(cyl(1.05, 1.05, 1.0, 12), lightWood(), 0, 0, P(-3.2));
+        const head = [[-1.5, 1.2], [-2.5, 4.6], [-2.8, 6.4], [0, 6.75], [2.8, 6.4], [2.5, 4.6], [1.5, 1.2], [1.5, -1.2], [2.5, -4.6], [2.8, -6.4], [0, -6.75], [-2.8, -6.4], [-2.5, -4.6], [-1.5, -1.2]].map(([u, v]) => [u + 44, v]);
+        add(ext('axeHead', head, 1.0, 0.32), blade || coatM());
+        for (const s of [1, -1]) add(ext('axeBit' + s, [[41.2, 5.6 * s], [46.8, 5.6 * s], [46.8, 6.4 * s], [44, 6.75 * s], [41.2, 6.4 * s]], 1.1, 0.05), edgeM());
+        melee.hold = 'two'; melee.hand2 = 10; melee.len = 46; break;
+      }
+      case 'katana': { // katana: wrapped tsuka with a pommel cap, round tsuba, brass habaki, a curved blade with a bright edge
+        const ito = mat('ito', () => { const c = document.createElement('canvas'); c.width = 64; c.height = 16; const x = c.getContext('2d'); x.fillStyle = '#e8e2d0'; x.fillRect(0, 0, 64, 16); x.fillStyle = '#1b1c26'; for (let i = 0; i <= 64; i += 8) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 8, 8); x.lineTo(i, 16); x.lineTo(i - 8, 8); x.fill(); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 3); return new THREE.MeshLambertMaterial({ map: t }); });
+        rod(-10.6, 2.0, 0.78, 0.72, ito, 8);
+        add(cyl(0.82, 0.8, 0.8, 8), darkMetal(), 0, 0, P(-10.8)); add(cyl(0.8, 0.8, 0.5, 8), darkMetal(), 0, 0, P(2.2)); // kashira and fuchi
+        add(cyl(2.0, 2.0, 0.3, 20).clone().scale(0.85, 1, 1), darkMetal(), 0, 0, P(2.6)); // tsuba
+        add(box(0.5, 1.45, 1.0), mat('habaki', () => new THREE.MeshPhongMaterial({ color: 0xc9a23a, shininess: 90, specular: 0xffe08a })), 0, 0.05, P(3.25));
+        // the blade curves up toward its back (sori); the edge is the convex side
+        const n = 18, u0 = 2.8, Lb = 37, crv = s => 1.6 * s * s, wid = s => 1.45 - 0.35 * s, spine = [], edge = [], ham = [], hamTop = [];
+        for (let i = 0; i <= n; i++) { const s = i / n, u = u0 + s * (Lb - 3.2), uh = u0 + 0.6 + s * (Lb - 3.8); spine.push([u, crv(s) + wid(s) * 0.42]); edge.unshift([u, crv(s) - wid(s) * 0.58]); ham.push([uh, crv(s) - wid(s) * 0.58]); hamTop.unshift([uh, crv(s) - wid(s) * 0.58 + 0.32 + 0.06 * Math.sin(i * 1.7)]); }
+        const tipU = u0 + Lb, cT = crv(1);
+        add(ext('katanaB', spine.concat([[tipU - 1.2, spine[n][1] - 0.05], [tipU, cT + 0.3], [tipU - 0.9, cT - 0.35], [tipU - 2.2, cT - 0.65]], edge), 0.28, 0.04), blade || steelM());
+        add(ext('katanaH', ham.concat(hamTop), 0.32, 0.02), edgeM()); // hamon
+        melee.hold = 'two'; melee.hand2 = -6.2; melee.len = 40; break;
+      }
+      case 'sledge': { // sledgehammer: long straight handle, heavy red-painted head with bare steel faces and bevels
+        rod(-3.4, 47.5, 0.85, 0.75, lightWood(), 12); add(cyl(0.95, 0.95, 0.9, 12), lightWood(), 0, 0, P(-3.2));
+        const red = mat('sledgeRed', () => new THREE.MeshPhongMaterial({ color: 0xa82020, shininess: 30, specular: 0x442222 })), face = mat('sledgeFace', () => new THREE.MeshPhongMaterial({ color: 0x9a9da2, shininess: 70, specular: 0xaaaaaa }));
+        add(box(3.4, 6.2, 3.6), blade || red, 0, 0, P(46.4));
+        for (const s of [1, -1]) { add(box(3.0, 1.1, 3.2), face, 0, s * 3.6, P(46.4)); add(box(2.4, 0.3, 2.6), face, 0, s * 4.25, P(46.4)); }
+        add(cyl(0.6, 0.6, 0.2, 10).clone().rotateY(Math.PI / 2), face, 1.75, 0, P(46.4));
+        melee.hold = 'two'; melee.hand2 = 10; melee.len = 48.5; break;
+      }
+      default: { // anything else: a plain knife
+        rod(-3, 2.5, 0.75, 0.7, polymer(), 10);
+        add(ext('knifeB' + it.id, [[2.6, -0.8], [9.6, -0.6], [10.8, 0.2], [2.6, 0.6]], 0.26, 0.03), blade || steelM());
+        melee.hold = 'knife'; melee.len = 10.8;
+      }
+    }
+    g.userData.tip = new THREE.Vector3(0, 0, -melee.len); g.userData.melee = melee; g.userData.sightY = 1.6;
+    return g;
+  }
+
   function build(it, o) {
     o = o || {};
     const g = new THREE.Group(), L = Math.max(10, Art.weaponLen(it)) * 0.525, t = it.type, atts = o.atts || [], has = s => atts.find(a => ITEMS[a] && ITEMS[a].slot === s);
@@ -122,22 +249,7 @@ const GunModel = (() => {
     // u (forward) -> -z
     const P = (u) => -u;
     let tip = -L, railTop = 1.2, sightU = 0.25 * L, realA = null;
-    if (it.cat === 'melee') {
-      if (it.id === 'fists') return g;
-      const blade = { Knife: 7, Blade: 13, Sword: 18 }[t];
-      add(ext('handle' + it.id, [[-1.2, -0.45], [2.6, -0.5], [2.6, 0.5], [-1.2, 0.45]], 0.9), it.id === 'katana' ? polymer() : wood(), 0, 0, 0);
-      if (blade) {
-        const pts = it.id === 'katana' ? [[2.6, -0.45], [2.6 + blade, -0.1], [2.6 + blade + 1.5, 0.6], [2.6 + blade * 0.6, 0.55], [2.6, 0.45]] : [[2.6, -0.5], [2.6 + blade, -0.2], [2.6 + blade + 1.2, 0.4], [2.6 + blade * 0.7, 0.55], [2.6, 0.5]];
-        add(ext('blade' + it.id, pts, 0.18, 0.03), mat('steel', () => new THREE.MeshPhongMaterial({ color: 0xb8bcc2, shininess: 120, specular: 0xffffff })), 0, 0, 0);
-        add(box(0.4, 1.8, 0.4), metal(), 0, 0, P(2.6));
-      } else {
-        add(ext('shaft' + it.id, [[2.6, -0.4], [12, -0.4], [12, 0.4], [2.6, 0.4]], 0.8), wood(), 0, 0, 0);
-        if (t === 'Axe') add(ext('axehead', [[10.5, -0.5], [13, -0.5], [13.6, -3.4], [11.2, -2.6], [10.5, 0.5]], 0.35, 0.05), metal(), 0, 0, 0);
-        else if (t === 'Hammer') add(box(2.4, 2.4, 3.8), darkMetal(), 0, 0, P(12));
-        else add(box(1.2, 1.2, 2.4), metal(), 0, 0, P(12.5)); // club / shovel head
-      }
-      g.userData.tip = new THREE.Vector3(0, 0, -6); return g;
-    }
+    if (it.cat === 'melee') return it.id === 'fists' ? g : buildMelee(it, o, g);
     if (t === 'Rocket Launcher') {
       add(cyl(1.5, 1.5, L * 1.25, 16), mat('rpgtube', () => new THREE.MeshLambertMaterial({ color: 0x4b5320 })), 0, 0.8, P(L * 0.35));
       add(cyl(1.2, 1.2, L * 0.5, 16), wood(), 0, 0.8, P(L * 0.25));
